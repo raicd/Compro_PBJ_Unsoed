@@ -51,11 +51,18 @@
         ->where('status_arsip', 'Publik');
 
       /**
-       * ✅ FIX SEARCH:
-       * - bisa cari "2025" (kolom tahun)
-       * - bisa cari nama UNIT (relasi unit.nama)
-       * - bisa cari nama file/dokumen (kolom dokumen/file/lampiran, termasuk json/path)
-       * - multi-kata (AND antar term)
+       * ✅ FIX SEARCH (HOME) - DIBATASI:
+       * HANYA mencakup:
+       * - Tahun
+       * - Unit Kerja (unit.nama)
+       * - Nama Pekerjaan
+       * - Nilai Kontrak
+       * - Status Pekerjaan
+       *
+       * ❌ Tidak cari ke dokumen/file/lampiran
+       * ❌ Tidak cari ke id_rup/nama_rekanan/jenis/pagu/hps
+       * PostgreSQL: ILIKE + regexp_replace untuk search angka nilai kontrak
+       * Multi kata = AND antar term
        */
       if($q){
         $qqRaw = trim((string)$q);
@@ -63,36 +70,27 @@
         $terms = preg_split('/\s+/', $qqRaw, -1, PREG_SPLIT_NO_EMPTY);
         $terms = array_values(array_filter(array_map(fn($t) => trim($t), $terms)));
 
-        // ambil semua kolom pengadaans yang mengandung dokumen/file/lampiran
-        $table = (new Pengadaan)->getTable();
-        $allCols = (Schema::hasTable($table)) ? Schema::getColumnListing($table) : [];
-
-        $docCols = array_values(array_filter($allCols, function($col){
-          $lk = strtolower((string)$col);
-          if(in_array($col, ['dokumen_tidak_dipersyaratkan','dokumen_tidak_dipersyaratkan_json'], true)) return false;
-          return (str_contains($lk,'dokumen') || str_contains($lk,'file') || str_contains($lk,'lampiran'));
-        }));
-
         foreach($terms as $term){
-          $arsipQuery->where(function($sub) use ($term, $docCols){
+          $arsipQuery->where(function($sub) use ($term){
             $like = "%{$term}%";
 
-            // kolom utama
-            $sub->where('nama_pekerjaan','like',$like)
-                ->orWhere('id_rup','like',$like)
-                ->orWhere('nama_rekanan','like',$like)
-                ->orWhere('jenis_pengadaan','like',$like)
-                ->orWhere('status_pekerjaan','like',$like)
-                ->orWhere('tahun','like',$like);
+            // ✅ Nama Pekerjaan & Status Pekerjaan
+            $sub->where('nama_pekerjaan', 'ILIKE', $like)
+                ->orWhere('status_pekerjaan', 'ILIKE', $like);
 
-            // ✅ FIX: unit hanya punya kolom "nama" (hapus "name")
+            // ✅ Tahun (cast text)
+            $sub->orWhereRaw('CAST(tahun AS TEXT) ILIKE ?', [$like]);
+
+            // ✅ Unit Kerja (relasi unit.nama)
             $sub->orWhereHas('unit', function($u) use ($like){
-              $u->where('nama','like',$like);
+              $u->where('nama', 'ILIKE', $like);
             });
 
-            // cari di semua kolom dokumen/file/lampiran (json/path juga kena)
-            foreach($docCols as $c){
-              $sub->orWhere($c, 'like', $like);
+            // ✅ Nilai Kontrak (angka) -> cocokkan digit-only
+            $digits = preg_replace('/\D+/', '', (string)$term);
+            if($digits !== ''){
+              $digLike = "%{$digits}%";
+              $sub->orWhereRaw("regexp_replace(CAST(nilai_kontrak AS TEXT), '\\D', '', 'g') LIKE ?", [$digLike]);
             }
           });
         }
@@ -352,7 +350,7 @@
         </tbody>
       </table>
 
-      {{-- ✅ PAGINATION BAWAH (ANGKA 1 2 3 …) — SAMA KONSEP PPK/ArsipPBJ --}}
+      {{-- ✅ PAGINATION BAWAH --}}
       <div class="pbj-foot">
         <div class="pbj-foot-left" id="pbjFootText">
           Halaman {{ $arsips->currentPage() }} dari {{ $arsips->lastPage() }}
@@ -419,7 +417,7 @@
   </div>
 </section>
 
-{{-- ✅ MODAL DETAIL (SAMA PERSIS Home/IndexContent) --}}
+{{-- ✅ MODAL DETAIL --}}
 <div id="detailModal" class="pbj-modal-overlay" onclick="closeDetailModal()">
   <div class="pbj-modal" onclick="event.stopPropagation()">
 
@@ -545,10 +543,8 @@
   #mDocs .pbj-doc-act i{ font-size:16px; line-height:1; display:block; }
   #mDocs .pbj-doc-act:hover{ background:#eef6f8; }
 
-  /* pagination */
   .pbj-page-btn.is-disabled{ opacity:.5; pointer-events:none; cursor:not-allowed; }
   .pbj-page-btn.is-ellipsis{ pointer-events:none; }
-
   .pbj-pager{ display:flex; gap:10px; align-items:center; }
 
   .pbj-page-btn{
@@ -709,7 +705,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ======================
-   MODAL (SAMA PERSIS Home/IndexContent)
+   MODAL
 ====================== */
 function openDetailModal(payload){
   const modal = document.getElementById('detailModal');

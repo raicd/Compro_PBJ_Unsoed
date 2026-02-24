@@ -45,39 +45,45 @@
       $arsipQuery = Pengadaan::with('unit')
         ->where('status_arsip', 'Publik');
 
-      // ✅ SEARCH: multi-term AND + cari tahun + unit.nama + dokumen/file/lampiran
+      /**
+       * ✅ FIX SEARCH (LANDING) - DIBATASI:
+       * HANYA mencakup:
+       * - Tahun
+       * - Unit Kerja (unit.nama)
+       * - Nama Pekerjaan
+       * - Nilai Kontrak
+       * - Status Pekerjaan
+       *
+       * ❌ Tidak cari ke dokumen/file/lampiran
+       * ❌ Tidak cari ke id_rup/nama_rekanan/jenis/pagu/hps
+       * Multi kata = AND antar term
+       */
       if($q){
         $qqRaw = trim((string)$q);
         $terms = preg_split('/\s+/', $qqRaw, -1, PREG_SPLIT_NO_EMPTY);
         $terms = array_values(array_filter(array_map(fn($t) => trim($t), $terms)));
 
-        $table = (new Pengadaan)->getTable();
-        $allCols = (Schema::hasTable($table)) ? Schema::getColumnListing($table) : [];
-
-        $docCols = array_values(array_filter($allCols, function($col){
-          $lk = strtolower((string)$col);
-          if(in_array($col, ['dokumen_tidak_dipersyaratkan','dokumen_tidak_dipersyaratkan_json'], true)) return false;
-          return (str_contains($lk,'dokumen') || str_contains($lk,'file') || str_contains($lk,'lampiran'));
-        }));
-
         foreach($terms as $term){
-          $arsipQuery->where(function($sub) use ($term, $docCols){
+          $arsipQuery->where(function($sub) use ($term){
             $like = "%{$term}%";
 
-            $sub->where('nama_pekerjaan','like',$like)
-                ->orWhere('id_rup','like',$like)
-                ->orWhere('nama_rekanan','like',$like)
-                ->orWhere('jenis_pengadaan','like',$like)
-                ->orWhere('status_pekerjaan','like',$like)
-                ->orWhere('tahun','like',$like);
+            // ✅ Nama Pekerjaan & Status Pekerjaan
+            $sub->where('nama_pekerjaan', 'ILIKE', $like)
+                ->orWhere('status_pekerjaan', 'ILIKE', $like);
 
-            // ✅ unit hanya kolom "nama"
+            // ✅ Tahun (cast text)
+            $sub->orWhereRaw('CAST(tahun AS TEXT) ILIKE ?', [$like]);
+
+            // ✅ Unit Kerja (relasi unit.nama)
             $sub->orWhereHas('unit', function($u) use ($like){
-              $u->where('nama','like',$like);
+              $u->where('nama', 'ILIKE', $like);
             });
 
-            foreach($docCols as $c){
-              $sub->orWhere($c, 'like', $like);
+            // ✅ Nilai Kontrak (angka) -> cocokkan digit-only (hapus Rp, titik, koma, dll)
+            $digits = preg_replace('/\D+/', '', (string)$term);
+            if($digits !== ''){
+              $digLike = "%{$digits}%";
+              $sub->orWhereRaw("regexp_replace(CAST(nilai_kontrak AS TEXT), '\\D', '', 'g') LIKE ?", [$digLike]);
             }
           });
         }
@@ -703,7 +709,14 @@ function openDetailModal(payload){
   const docsEmpty = document.getElementById('mDocsEmpty');
   docsWrap.innerHTML = '';
 
-  const toViewerUrl = (storageUrl) => `/file-viewer?file=${encodeURIComponent(storageUrl)}&mode=public`;
+  // ✅ pakai route helper, biar guest bisa akses (mode=public)
+  const FILE_VIEWER_URL = @json(route('file.viewer'));
+  const toViewerUrl = (storageUrl) => {
+    const url = new URL(FILE_VIEWER_URL, window.location.origin);
+    url.searchParams.set('file', storageUrl);
+    url.searchParams.set('mode', 'public');
+    return url.toString();
+  };
 
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'

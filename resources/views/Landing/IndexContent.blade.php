@@ -346,15 +346,11 @@
   /**
    * ==========================================
    * ✅ STATISTIKA REALTIME (PUBLIK)
-   * ✅ Dropdown Tahun = Semua Tahun
-   * ✅ Dropdown Unit = Semua Unit (dari tabel units)
-   * ✅ Klik chart => redirect ke landing.pbj dengan query
    * ==========================================
    */
 
   $statusList = ["Perencanaan","Pemilihan","Pelaksanaan","Selesai"];
 
-  // Tahun options dari DB (publik)
   $statYearOptions = \App\Models\Pengadaan::where('status_arsip','Publik')
     ->whereNotNull('tahun')
     ->select('tahun')->distinct()
@@ -364,7 +360,6 @@
     ->values()
     ->all();
 
-  // Unit options dari DB (semua units)
   $statUnitOptions = \App\Models\Unit::orderBy('nama')
     ->get(['id','nama'])
     ->map(fn($u)=>['id'=>$u->id,'nama'=>$u->nama])
@@ -403,9 +398,8 @@
   $donutData = [];
   $barData   = [];
 
-  // build untuk semua tahun + semua unit
-  $yearsForBuild = array_merge([null], $statYearOptions); // null = all
-  $unitsForBuild = array_merge([null], array_map(fn($x)=>$x['id'], $statUnitOptions)); // null = all
+  $yearsForBuild = array_merge([null], $statYearOptions);
+  $unitsForBuild = array_merge([null], array_map(fn($x)=>$x['id'], $statUnitOptions));
 
   foreach($yearsForBuild as $y){
     $yKey = $makeKey($y);

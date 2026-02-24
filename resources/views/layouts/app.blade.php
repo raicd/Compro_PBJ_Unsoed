@@ -24,66 +24,121 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
- {{-- ✅ NAV ACTIVE + SMOOTH (LANDING) --}}
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  const links = Array.from(document.querySelectorAll('.nav-links a.nav-link'));
-  if (!links.length) return;
+  {{-- ✅ SCROLLSPY (FINAL: JALAN SELAMA SECTION ADA, KONTAK SELALU WORK) --}}
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
 
-  // ✅ target section yang dipakai di navbar
-  const targets = Array.from(document.querySelectorAll('[id]'))
-    .filter(el => ['regulasi','kontak','statistika','arsip'].includes(el.id));
+    const allLinks = Array.from(document.querySelectorAll('.nav-links a.nav-link'));
+    if (!allLinks.length) return;
 
-  const setActiveById = (id) => {
-    links.forEach(a => a.classList.remove('active'));
-    const match = links.find(a => (a.getAttribute('href') || '').includes('#' + id));
-    if (match) match.classList.add('active');
-  };
+    const hashLinks = allLinks.filter(a => (a.getAttribute('href') || '').includes('#'));
+    if (!hashLinks.length) return;
 
-  const getCurrent = () => {
-    const offset = 140; // tinggi navbar kamu
-    let current = null;
+    // ✅ track section landing
+    const sectionIds = ['regulasi','statistika','kontak'];
 
-    targets.forEach(el => {
-      const top = el.getBoundingClientRect().top;
-      if (top - offset <= 0) current = el.id;
+    // ✅ kalau section-nya gak ada di halaman ini, stop (biar gak ganggu halaman lain)
+    const elements = sectionIds
+      .map(id => document.getElementById(id))
+      .filter(Boolean);
+
+    if (elements.length === 0) return;
+
+    const getHashFromHref = (a) => {
+      const href = a.getAttribute('href') || '';
+      try {
+        return new URL(href, window.location.origin).hash; // "#regulasi"
+      } catch (e) {
+        const idx = href.indexOf('#');
+        return idx >= 0 ? href.slice(idx) : '';
+      }
+    };
+
+    const setActiveById = (id) => {
+      const wanted = '#' + id;
+
+      allLinks.forEach(a => a.classList.remove('active'));
+
+      const match = allLinks.find(a => {
+        const href = a.getAttribute('href') || '';
+        const h = getHashFromHref(a);
+        return h === wanted || href.endsWith(wanted) || href.includes(wanted);
+      });
+
+      if (match) match.classList.add('active');
+    };
+
+    const setActiveByHash = () => {
+      const hash = window.location.hash;
+      if (!hash) return;
+
+      const id = hash.replace('#','');
+      if (sectionIds.includes(id)) setActiveById(id);
+    };
+
+    // ✅ 1) ACTIVE SAAT KLIK
+    hashLinks.forEach(a => {
+      a.addEventListener('click', () => {
+        const hash = getHashFromHref(a);
+        const id = hash.replace('#','');
+        if (!sectionIds.includes(id)) return;
+        setActiveById(id);
+        // sync setelah browser scroll
+        setTimeout(() => onScrollBottomCheck(), 80);
+      });
     });
 
-    return current;
-  };
+    // ✅ 2) KONTAK PASTI AKTIF DI BAWAH
+    const onScrollBottomCheck = () => {
+      const nearBottom =
+        window.innerHeight + window.scrollY >= document.body.scrollHeight - 8;
 
-  const onScroll = () => {
-    // ✅ kalau mentok bawah, paksa kontak aktif
-    const nearBottom =
-      window.innerHeight + window.scrollY >= document.body.scrollHeight - 20;
+      if (nearBottom) setActiveById('kontak');
+    };
 
-    if (nearBottom) {
-      setActiveById('kontak');
+    window.addEventListener('scroll', onScrollBottomCheck, { passive: true });
+
+    // ✅ 3) ACTIVE SAAT MASUK SECTION (Observer)
+    if (!('IntersectionObserver' in window)) {
+      window.addEventListener('hashchange', () => {
+        setActiveByHash();
+        onScrollBottomCheck();
+      });
+
+      setActiveByHash();
+      onScrollBottomCheck();
       return;
     }
 
-    const current = getCurrent();
-    if (current) setActiveById(current);
-  };
+    const observer = new IntersectionObserver((entries) => {
+      const nearBottom =
+        window.innerHeight + window.scrollY >= document.body.scrollHeight - 8;
 
-  // klik -> langsung aktif
-  links.forEach(a => {
-    a.addEventListener('click', () => {
-      const href = a.getAttribute('href') || '';
-      const hashIndex = href.indexOf('#');
-      if (hashIndex !== -1) {
-        const id = href.substring(hashIndex + 1);
-        if (id) setActiveById(id);
+      if (nearBottom) {
+        setActiveById('kontak');
+        return;
       }
+
+      const visible = entries
+        .filter(e => e.isIntersecting)
+        .sort((a,b) => (b.intersectionRatio - a.intersectionRatio))[0];
+
+      if (visible?.target?.id) {
+        setActiveById(visible.target.id);
+      }
+    }, {
+      root: null,
+      threshold: [0.12, 0.2, 0.35, 0.5],
+      rootMargin: '-140px 0px -55% 0px'
     });
+
+    elements.forEach(el => observer.observe(el));
+
+    // init
+    setActiveByHash();
+    onScrollBottomCheck();
   });
-
-  window.addEventListener('scroll', onScroll, { passive: true });
-  window.addEventListener('hashchange', onScroll);
-
-  onScroll();
-});
-</script>
+  </script>
 
   @stack('scripts')
 </body>

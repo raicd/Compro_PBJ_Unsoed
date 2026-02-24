@@ -199,6 +199,17 @@
 
   // ✅ query appends untuk pagination (server-side)
   $qs = request()->except('page');
+
+  /**
+   * ✅ NOTIF: dukung sukses dari tambah/edit secara konsisten
+   * - default: session('success')
+   * - fallback: session('updated') / session('edited')
+   * - fallback terakhir: query ?edited=1 (kalau redirect edit pakai query param)
+   */
+  $toastMessage = session('success')
+    ?? session('updated')
+    ?? session('edited')
+    ?? (request()->query('edited') ? 'Arsip berhasil diedit.' : null);
 @endphp
 
 <div class="dash-wrap">
@@ -265,6 +276,28 @@
         </button>
       </div>
     </header>
+
+    {{-- ✅ TOAST NOTIFIKASI (UPDATE) --}}
+    @if(!empty($toastMessage))
+      <div class="nt-wrap" id="ntWrap" aria-live="polite" aria-atomic="true">
+        <div class="nt-toast nt-success" id="ntToast" role="status" data-autohide="true">
+          <div class="nt-ic">
+            <i class="bi bi-check2-circle"></i>
+          </div>
+
+          <div class="nt-content">
+            <div class="nt-title">Berhasil</div>
+            <div class="nt-desc">{{ $toastMessage }}</div>
+          </div>
+
+          <button type="button" class="nt-close" id="ntCloseBtn" aria-label="Tutup notifikasi">
+            <i class="bi bi-x-lg"></i>
+          </button>
+
+          <div class="nt-bar" aria-hidden="true"></div>
+        </div>
+      </div>
+    @endif
 
     {{-- FILTER BAR --}}
     <section class="dash-filter ap-filter">
@@ -603,6 +636,46 @@
   </div>
 </div>
 
+<!-- ====== MODAL KONFIRMASI HAPUS (BARU) ====== -->
+<div class="cf-modal" id="cfModal" aria-hidden="true">
+  <div class="cf-backdrop" data-close="true"></div>
+
+  <div class="cf-panel" role="dialog" aria-modal="true" aria-labelledby="cfTitle" aria-describedby="cfDesc">
+    <div class="cf-card">
+      <div class="cf-top">
+        <div class="cf-badge">
+          <i class="bi bi-shield-exclamation"></i>
+        </div>
+
+        <button type="button" class="cf-close" id="cfCloseBtn" aria-label="Tutup">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <div class="cf-body">
+        <div class="cf-title" id="cfTitle">Konfirmasi Hapus</div>
+        <div class="cf-desc" id="cfDesc">
+          Apakah Anda yakin ingin menghapus arsip ini?
+        </div>
+
+        <div class="cf-meta" id="cfMeta" hidden>
+          <div class="cf-pill"><i class="bi bi-archive"></i> <span id="cfCount">1</span> dipilih</div>
+        </div>
+
+        <div class="cf-actions">
+          <button type="button" class="cf-btn cf-btn-ghost" id="cfCancelBtn">
+            Batal
+          </button>
+          <button type="button" class="cf-btn cf-btn-danger" id="cfConfirmBtn">
+            <i class="bi bi-trash3"></i>
+            Ya, Hapus
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <style>
   /* (CSS kamu tetap sama — tidak diubah) */
   body.page-arsip.dash-body{font-size:18px;line-height:1.6;}
@@ -769,6 +842,251 @@
       column-gap:14px;
     }
   }
+
+  /* =========================
+     ✅ CSS MODAL KONFIRMASI (BARU)
+  ========================== */
+  .page-arsip .cf-modal{position:fixed;inset:0;z-index:10000;display:none;}
+  .page-arsip .cf-modal.is-open{display:flex;align-items:center;justify-content:center;padding:12px;}
+  .page-arsip .cf-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.40);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);}
+  .page-arsip .cf-panel{
+    width:min(520px, 94vw);
+    position:relative;
+    z-index:1;
+    border-radius:24px;
+    overflow:hidden;
+    box-shadow:0 22px 60px rgba(2,6,23,.25);
+  }
+  .page-arsip .cf-card{
+    background:linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    border:1px solid rgba(148,163,184,.35);
+    border-radius:24px;
+    overflow:hidden;
+  }
+  .page-arsip .cf-top{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+    padding:16px 16px 0 16px;
+  }
+  .page-arsip .cf-badge{
+    width:52px;height:52px;border-radius:18px;
+    display:grid;place-items:center;
+    background:linear-gradient(135deg, rgba(246,193,0,.18), rgba(15,23,42,.06));
+    border:1px solid rgba(246,193,0,.35);
+    box-shadow:0 10px 24px rgba(2,6,23,.08);
+    flex:0 0 auto;
+  }
+  .page-arsip .cf-badge i{font-size:22px;line-height:1;color:#0f172a;}
+
+  /* ✅ UPDATE: tombol X benar-benar center */
+  .page-arsip .cf-close{
+    width:44px;height:44px;border-radius:16px;
+    border:1px solid #e8eef3;background:#fff;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    padding:0;
+    line-height:0;
+
+    cursor:pointer;transition:.15s ease;
+    flex:0 0 auto;
+  }
+  .page-arsip .cf-close:hover{transform:translateY(-1px);border-color:#d6e2ea;background:#f8fbfd;}
+  .page-arsip .cf-close:active{transform:translateY(0);}
+  .page-arsip .cf-close i{font-size:18px;line-height:1;display:block;}
+
+  .page-arsip .cf-body{padding:10px 16px 16px;}
+  .page-arsip .cf-title{
+    font-size:20px;
+    font-weight:600;
+    color:#0f172a;
+    letter-spacing:.2px;
+    margin:2px 0 6px;
+  }
+  .page-arsip .cf-desc{
+    font-size:14.5px;
+    color:#475569;
+    line-height:1.55;
+    margin:0 0 10px;
+  }
+  .page-arsip .cf-meta{display:flex;gap:10px;align-items:center;margin:10px 0 12px;}
+  .page-arsip .cf-pill{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:8px 10px;border-radius:999px;
+    background:#f8fbfd;border:1px solid #e8eef3;
+    font-size:13px;font-weight:500;color:#0f172a;
+  }
+  .page-arsip .cf-pill i{font-size:14px;opacity:.9;}
+  .page-arsip .cf-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:8px;}
+  .page-arsip .cf-btn{
+    height:42px;
+    padding:0 14px;
+    border-radius:14px;
+    border:1px solid transparent;
+    font-size:14px;
+    font-weight:500;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    transition:.15s ease;
+    user-select:none;
+  }
+  .page-arsip .cf-btn-ghost{
+    background:#fff;
+    border-color:#e8eef3;
+    color:#0f172a;
+  }
+  .page-arsip .cf-btn-ghost:hover{background:#f8fbfd;border-color:#d6e2ea;transform:translateY(-1px);}
+  .page-arsip .cf-btn-ghost:active{transform:translateY(0);}
+  .page-arsip .cf-btn-danger{
+    background:linear-gradient(135deg, #ef4444, #dc2626);
+    color:#fff;
+    box-shadow:0 14px 30px rgba(220,38,38,.22);
+  }
+  .page-arsip .cf-btn-danger:hover{transform:translateY(-1px);filter:saturate(1.05);}
+  .page-arsip .cf-btn-danger:active{transform:translateY(0);}
+  .page-arsip .cf-btn:disabled{opacity:.7;cursor:not-allowed;transform:none;box-shadow:none;}
+  .page-arsip .cf-hint{
+    margin-top:12px;
+    padding:10px 12px;
+    border-radius:16px;
+    background:rgba(15,23,42,.04);
+    border:1px dashed rgba(15,23,42,.12);
+    display:flex;
+    align-items:center;
+    gap:10px;
+    color:#334155;
+    font-size:13.5px;
+    font-weight:700;
+  }
+  .page-arsip .cf-hint i{font-size:16px;line-height:1;}
+
+  /* =========================
+     ✅ CSS TOAST NOTIF (BARU)
+  ========================== */
+  .page-arsip .nt-wrap{
+    position:fixed;
+    top:18px;
+    right:18px;
+    z-index:11000;
+    pointer-events:none;
+  }
+  .page-arsip .nt-toast{
+    width:min(420px, calc(100vw - 36px));
+    background:linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    border:1px solid rgba(148,163,184,.35);
+    border-left:6px solid rgba(246,193,0,.95);
+    border-radius:18px;
+    box-shadow:0 18px 52px rgba(2,6,23,.18);
+    padding:12px 12px;
+    display:flex;
+    gap:12px;
+    align-items:flex-start;
+    transform:translateY(-10px);
+    opacity:0;
+    transition:.22s ease;
+    pointer-events:auto;
+    position:relative;
+    overflow:hidden;
+  }
+  .page-arsip .nt-toast.is-show{
+    transform:translateY(0);
+    opacity:1;
+  }
+  .page-arsip .nt-ic{
+    width:44px;height:44px;border-radius:16px;
+    display:grid;place-items:center;
+    background:linear-gradient(135deg, rgba(246,193,0,.18), rgba(15,23,42,.06));
+    border:1px solid rgba(246,193,0,.35);
+    flex:0 0 auto;
+  }
+  .page-arsip .nt-ic i{font-size:20px;line-height:1;color:#0f172a;}
+  .page-arsip .nt-content{min-width:0;flex:1;}
+  .page-arsip .nt-title{
+    font-size:14px;
+    font-weight:900;
+    color:#0f172a;
+    letter-spacing:.2px;
+    margin:1px 0 2px;
+  }
+  .page-arsip .nt-desc{
+    font-size:13.5px;
+    color:#475569;
+    line-height:1.45;
+    overflow-wrap:anywhere;
+  }
+  .page-arsip .nt-close{
+    width:40px;height:40px;border-radius:14px;
+    border:1px solid #e8eef3;background:#fff;
+    display:grid;place-items:center;
+    cursor:pointer;transition:.15s ease;
+    flex:0 0 auto;
+  }
+  .page-arsip .nt-close:hover{transform:translateY(-1px);border-color:#d6e2ea;background:#f8fbfd;}
+  .page-arsip .nt-close:active{transform:translateY(0);}
+  .page-arsip .nt-close i{font-size:16px;line-height:1;}
+  .page-arsip .nt-bar{
+    position:absolute;
+    left:0;bottom:0;height:3px;
+    width:100%;
+    background:linear-gradient(90deg, rgba(246,193,0,.95), rgba(15,23,42,.28));
+    transform-origin:left center;
+    transform:scaleX(1);
+  }
+
+  /* ==========================================================
+     ✅ UPDATE BARU: KECILIN "BERHASIL" + TEXT POPUP HAPUS
+     (ditaruh PALING BAWAH biar override)
+  ========================================================== */
+  .page-arsip .nt-title{
+    font-size:12.5px !important;
+    font-weight:800 !important;
+    letter-spacing:.15px !important;
+    line-height:1.2 !important;
+  }
+  .page-arsip .nt-desc{
+    font-size:12.5px !important;
+    line-height:1.45 !important;
+  }
+  .page-arsip .nt-ic{
+    width:40px !important;
+    height:40px !important;
+    border-radius:14px !important;
+  }
+  .page-arsip .nt-ic i{font-size:18px !important;}
+  .page-arsip .nt-close{width:36px !important;height:36px !important;}
+  .page-arsip .nt-close i{font-size:14px !important;}
+
+  .page-arsip .cf-title{
+    font-size:17px !important;
+    font-weight:700 !important;
+    line-height:1.25 !important;
+  }
+  .page-arsip .cf-desc{
+    font-size:13px !important;
+    line-height:1.5 !important;
+  }
+  .page-arsip .cf-pill{
+    font-size:12.5px !important;
+    padding:7px 10px !important;
+  }
+  .page-arsip .cf-btn{
+    height:40px !important;
+    font-size:13px !important;
+    border-radius:12px !important;
+  }
+  .page-arsip .cf-badge{
+    width:48px !important;
+    height:48px !important;
+    border-radius:16px !important;
+  }
+  .page-arsip .cf-badge i{font-size:20px !important;}
 </style>
 
 <script>
@@ -837,6 +1155,64 @@ document.addEventListener('DOMContentLoaded', function () {
     const ids = getCheckedIds();
     setBtnDisabled(deleteBtn, ids.length === 0);
   }
+
+  // =========================
+  // ✅ TOAST NOTIFIKASI (BARU)
+  // =========================
+  (function initToast(){
+    const toast = document.getElementById('ntToast');
+    const closeBtn = document.getElementById('ntCloseBtn');
+    if(!toast) return;
+
+    const bar = toast.querySelector('.nt-bar');
+    let hideTimer = null;
+    const DURATION = 4200;
+
+    const show = () => {
+      requestAnimationFrame(() => {
+        toast.classList.add('is-show');
+        if(bar){
+          bar.style.transition = 'none';
+          bar.style.transform = 'scaleX(1)';
+          // trigger reflow
+          void bar.offsetHeight;
+          bar.style.transition = `transform ${DURATION}ms linear`;
+          bar.style.transform = 'scaleX(0)';
+        }
+      });
+
+      hideTimer = setTimeout(() => hide(), DURATION + 100);
+    };
+
+    const hide = () => {
+      clearTimeout(hideTimer);
+      toast.classList.remove('is-show');
+      setTimeout(() => {
+        const wrap = document.getElementById('ntWrap');
+        if(wrap) wrap.remove();
+      }, 250);
+    };
+
+    if(closeBtn) closeBtn.addEventListener('click', hide);
+
+    // pause on hover
+    toast.addEventListener('mouseenter', () => {
+      clearTimeout(hideTimer);
+      if(bar){
+        // hentikan bar di posisi saat ini
+        const computed = window.getComputedStyle(bar).transform;
+        bar.style.transition = 'none';
+        bar.style.transform = computed === 'none' ? bar.style.transform : computed;
+      }
+    });
+
+    toast.addEventListener('mouseleave', () => {
+      // lanjutkan bar (lebih simpel: langsung auto-hide cepat)
+      hideTimer = setTimeout(() => hide(), 1200);
+    });
+
+    show();
+  })();
 
   // =========================
   // ✅ SERVER-SIDE FILTER NAVIGATION (debounce)
@@ -962,34 +1338,126 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  // =========================
+  // ✅ MODAL KONFIRMASI HAPUS (BARU) - pengganti confirm()
+  // =========================
+  const cfModal     = document.getElementById('cfModal');
+  const cfCloseBtn  = document.getElementById('cfCloseBtn');
+  const cfCancelBtn = document.getElementById('cfCancelBtn');
+  const cfConfirmBtn= document.getElementById('cfConfirmBtn');
+  const cfMeta      = document.getElementById('cfMeta');
+  const cfCountEl   = document.getElementById('cfCount');
+  const cfHint      = document.getElementById('cfHint');
+
+  let pendingDeleteIds = [];
+  let isDeleting = false;
+
+  function openConfirmModal(ids){
+    if(!cfModal) return;
+    pendingDeleteIds = Array.isArray(ids) ? ids.slice() : [];
+    const count = pendingDeleteIds.length;
+
+    if(cfCountEl) cfCountEl.textContent = String(count || 0);
+    if(cfMeta) cfMeta.hidden = !(count > 0);
+    if(cfHint) cfHint.hidden = true;
+
+    if(cfConfirmBtn){
+      cfConfirmBtn.disabled = false;
+      cfConfirmBtn.innerHTML = `<i class="bi bi-trash3"></i> Ya, Hapus`;
+    }
+
+    cfModal.classList.add('is-open');
+    document.body.classList.add('modal-open');
+    document.body.style.overflow = 'hidden';
+    cfModal.setAttribute('aria-hidden', 'false');
+
+    // focus untuk aksesibilitas
+    setTimeout(() => { cfCancelBtn?.focus?.(); }, 0);
+  }
+
+  function closeConfirmModal(){
+    if(!cfModal) return;
+    if(isDeleting) return; // jangan tutup saat proses delete
+
+    cfModal.classList.remove('is-open');
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    cfModal.setAttribute('aria-hidden', 'true');
+
+    pendingDeleteIds = [];
+  }
+
+  async function runDelete(ids){
+    if(isDeleting) return;
+    isDeleting = true;
+
+    // lock UI confirm
+    if(cfHint) cfHint.hidden = false;
+    if(cfConfirmBtn){
+      cfConfirmBtn.disabled = true;
+      cfConfirmBtn.innerHTML = `<i class="bi bi-hourglass-split"></i> Menghapus...`;
+    }
+
+    // lock toolbar delete
+    setBtnDisabled(deleteBtn, true);
+    if(deleteBtn) deleteBtn.style.pointerEvents = 'none';
+
+    try {
+      for (const id of ids) {
+        await deleteOne(id);
+      }
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      alert(err?.message || 'Gagal menghapus arsip. Cek console/log server.');
+      // unlock
+      if(deleteBtn) deleteBtn.style.pointerEvents = '';
+      updateDeleteState();
+
+      if(cfHint) cfHint.hidden = true;
+      if(cfConfirmBtn){
+        cfConfirmBtn.disabled = false;
+        cfConfirmBtn.innerHTML = `<i class="bi bi-trash3"></i> Ya, Hapus`;
+      }
+      isDeleting = false;
+    }
+  }
+
   if(deleteBtn){
-    deleteBtn.addEventListener('click', async function(){
+    deleteBtn.addEventListener('click', function(){
       const ids = getCheckedIds();
       if(ids.length === 0){
         alert('Pilih minimal 1 arsip (atau pilih semua) untuk dihapus.');
         return;
       }
+      // ✅ tampilkan modal konfirmasi (lebih senada daripada confirm())
+      openConfirmModal(ids);
+    });
+  }
 
-      const ok = confirm(`Hapus ${ids.length} arsip terpilih?`);
-      if(!ok) return;
+  if(cfCancelBtn) cfCancelBtn.addEventListener('click', closeConfirmModal);
+  if(cfCloseBtn)  cfCloseBtn.addEventListener('click', closeConfirmModal);
 
-      setBtnDisabled(deleteBtn, true);
-      if(deleteBtn) deleteBtn.style.pointerEvents = 'none';
-
-      try {
-        for (const id of ids) {
-          await deleteOne(id);
-        }
-        window.location.reload();
-      } catch (err) {
-        console.error(err);
-        alert(err?.message || 'Gagal menghapus arsip. Cek console/log server.');
-        if(deleteBtn) deleteBtn.style.pointerEvents = '';
-        updateDeleteState();
+  if(cfModal){
+    cfModal.addEventListener('click', function(e){
+      const t = e.target;
+      if(t && t.getAttribute && t.getAttribute('data-close') === 'true'){
+        closeConfirmModal();
       }
     });
   }
 
+  if(cfConfirmBtn){
+    cfConfirmBtn.addEventListener('click', async function(){
+      const ids = pendingDeleteIds.slice();
+      if(ids.length === 0) return;
+      await runDelete(ids);
+    });
+  }
+
+  // =========================
+  // checkbox events (tetap)
+  // =========================
   document.addEventListener('change', function(e){
     if(e.target && e.target.classList && e.target.classList.contains('ap-row-check')){
       syncSelectAllState();
@@ -1442,6 +1910,11 @@ document.addEventListener('DOMContentLoaded', function () {
   document.addEventListener('keydown', function(e){
     if(e.key === 'Escape' && modal && modal.classList.contains('is-open')){
       closeModal();
+      return;
+    }
+    if(e.key === 'Escape' && cfModal && cfModal.classList.contains('is-open')){
+      closeConfirmModal();
+      return;
     }
   });
 });

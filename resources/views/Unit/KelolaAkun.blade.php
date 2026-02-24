@@ -18,20 +18,21 @@
   <link rel="stylesheet" href="{{ asset('css/Unit.css') }}">
 </head>
 
-<body class="dash-body page-akun">
+{{-- ✅ SAMA KONSEP DENGAN TAMBAH PENGADAAN: pakai 1 class khusus page --}}
+<body class="dash-body page-unit-akun">
 @php
   $user = auth()->user();
 
   // fallback dummy kalau belum login/backend belum beres
   $unitName  = $user->name  ?? 'Admin Unit';
   $unitEmail = $user->email ?? 'unit@contoh.ac.id';
-  $roleText  = 'ADMIN (UNIT)';
+  $roleText  = 'PIC (Unit)';
 
   $initials = strtoupper(mb_substr(trim($unitName), 0, 1));
 @endphp
 
 <div class="dash-wrap">
-  {{-- SIDEBAR (SAMA PERSIS DENGAN DASHBOARD UNIT) --}}
+  {{-- SIDEBAR (✅ BIARKAN 100% NGIKUT Unit.css biar SAMA PERSIS) --}}
   <aside class="dash-sidebar">
     <div class="dash-brand">
       <div class="dash-logo">
@@ -42,6 +43,12 @@
         <div class="dash-app">SIAPABAJA</div>
         <div class="dash-role">{{ $roleText }}</div>
       </div>
+    </div>
+
+    {{-- ✅ SAMA PERSIS: pakai dash-unitbox --}}
+    <div class="dash-unitbox">
+      <div class="dash-unit-label">Unit Kerja :</div>
+      <div class="dash-unit-name">{{ $unitName }}</div>
     </div>
 
     <nav class="dash-nav">
@@ -60,14 +67,13 @@
         Tambah Pengadaan
       </a>
 
-      {{-- ✅ MENU BARU --}}
       <a class="dash-link active" href="{{ route('unit.kelola.akun') }}">
         <span class="ic"><i class="bi bi-person-gear"></i></span>
         Kelola Akun
       </a>
     </nav>
 
-    {{-- Footer buttons (DISAMAKAN DENGAN ARSIP PBJ) --}}
+    {{-- Footer buttons (DISAMAKAN DENGAN ARSIP PBJ / TAMBAH PENGADAAN) --}}
     <div class="dash-side-actions">
       <a class="dash-side-btn" href="{{ route('home') }}">
         <i class="bi bi-house-door"></i> Kembali
@@ -157,7 +163,10 @@
         </div>
 
         <div class="a-card-body">
-          <form class="a-form" action="{{ route('unit.akun.update') ?? '#' }}" method="POST" autocomplete="off">
+          <form class="a-form"
+                action="{{ \Illuminate\Support\Facades\Route::has('unit.akun.update') ? route('unit.akun.update') : '#' }}"
+                method="POST"
+                autocomplete="off">
             @csrf
             @method('PUT')
 
@@ -179,44 +188,35 @@
 
             <div class="a-field">
               <label class="a-label"><i class="bi bi-key"></i> Password Saat Ini</label>
-
-              {{-- ✅ eye benar2 "di dalam kolom" --}}
               <div class="a-pass">
                 <input id="curPw" type="password" name="current_password" placeholder="Wajib jika ingin mengganti password">
                 <button class="a-eye" type="button" data-eye="curPw" aria-label="Tampilkan password">
                   <i class="bi bi-eye"></i>
                 </button>
               </div>
-
               <div class="a-hint">Kosongkan jika tidak mengganti password.</div>
             </div>
 
             <div class="a-row">
               <div class="a-field">
                 <label class="a-label"><i class="bi bi-lock"></i> Password Baru</label>
-
-                {{-- ✅ eye benar2 "di dalam kolom" --}}
                 <div class="a-pass">
                   <input id="newPw" type="password" name="password" placeholder="Password baru">
                   <button class="a-eye" type="button" data-eye="newPw" aria-label="Tampilkan password">
                     <i class="bi bi-eye"></i>
                   </button>
                 </div>
-
                 <div class="a-hint">Minimal 8 karakter.</div>
               </div>
 
               <div class="a-field">
                 <label class="a-label"><i class="bi bi-lock-fill"></i> Konfirmasi Password</label>
-
-                {{-- ✅ eye benar2 "di dalam kolom" --}}
                 <div class="a-pass">
                   <input id="cnfPw" type="password" name="password_confirmation" placeholder="Ulangi password baru">
                   <button class="a-eye" type="button" data-eye="cnfPw" aria-label="Tampilkan password">
                     <i class="bi bi-eye"></i>
                   </button>
                 </div>
-
                 <div class="a-hint">Harus sama dengan password baru.</div>
               </div>
             </div>
@@ -239,28 +239,32 @@
     --unsoed-yellow-dark: #d9a800;
   }
 
-  .page-akun{
-    font-size: 20px;
-    line-height: 1.65;
+  /* =========================================================
+     ✅ SCOPE CSS KE PAGE SAJA (MODEL SAMA KAYAK TAMBAH PENGADAAN)
+     PENTING: JANGAN override sidebar (.dash-unitbox dkk)
+     ========================================================= */
+  :where(.page-unit-akun){
+    line-height: 1.6;
     font-weight: 400;
   }
 
-  html, body{ height:100%; overflow:hidden; }
-  .dash-wrap, .dash-main{ height:100vh; overflow:hidden; }
+  /* Header tetap konsisten seperti halaman lain */
+  :where(.page-unit-akun) .dash-app{ font-weight: 600 !important; }
+  :where(.page-unit-akun) .dash-header h1{ font-weight: 600 !important; }
+  :where(.page-unit-akun) .dash-header p{ font-weight: 400 !important; }
 
-  .dash-header h1{
-    font-weight: 600 !important;
-    font-size: 30px;
-    line-height: 1.2;
-  }
-  .dash-header p{
-    font-weight: 400 !important;
-    font-size: 16px;
-    margin-top: 6px;
-    opacity: .9;
+  /* Sidebar footer actions sama seperti tambah pengadaan */
+  :where(.page-unit-akun) .dash-sidebar{ display:flex; flex-direction:column; }
+  :where(.page-unit-akun) .dash-side-actions{
+    margin-top:auto;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255,255,255,.12);
+    display:grid;
+    gap: 10px;
   }
 
-  .a-alert{
+  /* ====== Alerts ====== */
+  :where(.page-unit-akun) .a-alert{
     margin-top: 12px;
     margin-bottom: 16px;
     border-radius: 14px;
@@ -274,25 +278,25 @@
     font-size: 15px;
     color:#0f172a;
   }
-  .a-alert i{ font-size: 18px; margin-top: 1px; }
-  .a-alert--ok{ border-left: 4px solid var(--unsoed-blue); }
-  .a-alert--err{ border-left: 4px solid var(--unsoed-yellow); }
-  .a-errlist{ margin: 6px 0 0 0; padding-left: 18px; }
-  .a-errlist li{ margin: 2px 0; }
+  :where(.page-unit-akun) .a-alert i{ font-size: 18px; margin-top: 1px; }
+  :where(.page-unit-akun) .a-alert--ok{ border-left: 4px solid var(--unsoed-blue); }
+  :where(.page-unit-akun) .a-alert--err{ border-left: 4px solid var(--unsoed-yellow); }
+  :where(.page-unit-akun) .a-errlist{ margin: 6px 0 0 0; padding-left: 18px; }
+  :where(.page-unit-akun) .a-errlist li{ margin: 2px 0; }
 
-  .a-grid{
+  /* ====== Layout cards ====== */
+  :where(.page-unit-akun) .a-grid{
     display:grid;
     grid-template-columns: 1fr 1.2fr;
     gap: 14px;
     overflow:auto;
     padding-right: 2px;
-    height: calc(100vh - 178px);
   }
   @media(max-width:1100px){
-    .a-grid{ grid-template-columns: 1fr; height: calc(100vh - 178px); }
+    :where(.page-unit-akun) .a-grid{ grid-template-columns: 1fr; }
   }
 
-  .a-card{
+  :where(.page-unit-akun) .a-card{
     background:#fff;
     border: 1px solid #e6eef2;
     border-radius: 18px;
@@ -300,19 +304,19 @@
     overflow:hidden;
   }
 
-  .a-card-head{
+  :where(.page-unit-akun) .a-card-head{
     padding: 14px 16px;
     border-bottom: 1px solid rgba(255,255,255,.18);
     background: var(--unsoed-blue);
   }
 
-  .a-head-left{
+  :where(.page-unit-akun) .a-head-left{
     display:flex;
     align-items:center;
     gap: 12px;
   }
 
-  .a-ico{
+  :where(.page-unit-akun) .a-ico{
     width: 40px; height: 40px;
     border-radius: 12px;
     display:grid; place-items:center;
@@ -323,27 +327,28 @@
     flex: 0 0 auto;
   }
 
-  .a-head-text .t1{
+  :where(.page-unit-akun) .a-head-text .t1{
     font-size: 18px;
     color:#fff;
     font-weight: 600 !important;
     line-height: 1.2;
   }
-  .a-head-text .t2{
+  :where(.page-unit-akun) .a-head-text .t2{
     margin-top: 3px;
     font-size: 14px;
     color: rgba(255,255,255,.85);
     line-height: 1.2;
   }
 
-  .a-card-body{ padding: 16px; }
+  :where(.page-unit-akun) .a-card-body{ padding: 16px; }
 
-  .a-profile{
+  /* ====== Profile ====== */
+  :where(.page-unit-akun) .a-profile{
     display:flex;
     align-items:center;
     gap: 12px;
   }
-  .a-avatar{
+  :where(.page-unit-akun) .a-avatar{
     width: 58px; height: 58px;
     border-radius: 18px;
     display:grid; place-items:center;
@@ -354,8 +359,8 @@
     font-weight: 600;
     flex: 0 0 auto;
   }
-  .a-meta{ min-width:0; }
-  .a-name{
+  :where(.page-unit-akun) .a-meta{ min-width:0; }
+  :where(.page-unit-akun) .a-name{
     font-size: 18px;
     color:#0f172a;
     font-weight: 600;
@@ -364,13 +369,13 @@
     overflow:hidden;
     text-overflow: ellipsis;
   }
-  .a-pills{
+  :where(.page-unit-akun) .a-pills{
     display:flex;
     flex-wrap: wrap;
     gap: 10px;
     margin-top: 8px;
   }
-  .a-pill{
+  :where(.page-unit-akun) .a-pill{
     display:inline-flex;
     align-items:center;
     gap: 7px;
@@ -382,16 +387,16 @@
     color:#0f172a;
     opacity: .92;
   }
-  .a-pill i{ opacity:.75; }
+  :where(.page-unit-akun) .a-pill i{ opacity:.75; }
 
-  .a-tips{
+  :where(.page-unit-akun) .a-tips{
     margin-top: 16px;
     border-radius: 14px;
     border: 1px dashed #d7e9ee;
     background: #f7fbfd;
     padding: 12px 12px;
   }
-  .a-tip-title{
+  :where(.page-unit-akun) .a-tip-title{
     display:flex;
     align-items:center;
     gap: 8px;
@@ -400,7 +405,7 @@
     margin-bottom: 10px;
     font-weight: 600;
   }
-  .a-tips ul{
+  :where(.page-unit-akun) .a-tips ul{
     margin: 0;
     padding-left: 18px;
     font-size: 15px;
@@ -408,20 +413,22 @@
     opacity: .88;
     line-height: 1.55;
   }
-  .a-tips li{ margin: 5px 0; }
+  :where(.page-unit-akun) .a-tips li{ margin: 5px 0; }
 
-  .a-form{ display:flex; flex-direction:column; gap: 14px; }
-  .a-row{
+  /* ====== Form ====== */
+  :where(.page-unit-akun) .a-form{ display:flex; flex-direction:column; gap: 14px; }
+  :where(.page-unit-akun) .a-row{
     display:grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
   }
   @media(max-width:720px){
-    .a-row{ grid-template-columns: 1fr; }
+    :where(.page-unit-akun) .a-row{ grid-template-columns: 1fr; }
   }
 
-  .a-field{ display:flex; flex-direction:column; gap: 8px; }
-  .a-label{
+  :where(.page-unit-akun) .a-field{ display:flex; flex-direction:column; gap: 8px; }
+
+  :where(.page-unit-akun) .a-label{
     font-size: 15px;
     color:#0f172a;
     opacity: .9;
@@ -430,10 +437,10 @@
     gap: 8px;
     font-weight: 600 !important;
   }
-  .a-label i{ opacity:.75; }
+  :where(.page-unit-akun) .a-label i{ opacity:.75; }
 
-  .a-field input[type="text"],
-  .a-field input[type="email"]{
+  :where(.page-unit-akun) .a-field input[type="text"],
+  :where(.page-unit-akun) .a-field input[type="email"]{
     height: 48px;
     border-radius: 12px;
     border: 1px solid #e2e8f0;
@@ -446,11 +453,8 @@
     transition: .15s ease;
   }
 
-  /* ==========================
-     ✅ INPUT PASSWORD GROUP
-     (TAMBAH: hide icon mata bawaan browser + space atas bawah)
-     ========================== */
-  .a-pass{
+  /* ✅ Password group: TANPA margin biar ga berjarak */
+  :where(.page-unit-akun) .a-pass{
     height: 48px;
     border-radius: 12px;
     border: 1px solid #e2e8f0;
@@ -459,16 +463,14 @@
     align-items:center;
     overflow:hidden;
     transition: .15s ease;
-
-    /* ✅ Tambahan space atas-bawah (sedikit aja) */
-    margin: 4px 0;
+    margin: 0; /* ✅ rapat */
   }
-  .a-pass:focus-within{
+  :where(.page-unit-akun) .a-pass:focus-within{
     border-color: var(--unsoed-blue);
     box-shadow: 0 0 0 4px rgba(24,79,97,.12);
   }
-  .a-pass input[type="password"],
-  .a-pass input[type="text"]{
+  :where(.page-unit-akun) .a-pass input[type="password"],
+  :where(.page-unit-akun) .a-pass input[type="text"]{
     border: 0 !important;
     outline: none !important;
     height: 100%;
@@ -481,22 +483,22 @@
   }
 
   /* ✅ HILANGKAN icon mata bawaan Edge/IE (penyebab icon dobel) */
-  input[type="password"]::-ms-reveal,
-  input[type="password"]::-ms-clear{
+  :where(.page-unit-akun) input[type="password"]::-ms-reveal,
+  :where(.page-unit-akun) input[type="password"]::-ms-clear{
     display:none !important;
   }
 
   /* ✅ Kadang muncul tombol kredensial di Chromium, sembunyikan */
-  input::-webkit-credentials-auto-fill-button{
+  :where(.page-unit-akun) input::-webkit-credentials-auto-fill-button{
     visibility: hidden !important;
     display: none !important;
     pointer-events: none !important;
     opacity: 0 !important;
   }
 
-  .a-eye{
+  :where(.page-unit-akun) .a-eye{
     height: 100%;
-    width: 48px;                 /* sama tinggi biar presisi */
+    width: 48px;
     border: 0;
     border-left: 1px solid #e6eef2;
     background: #f8fafc;
@@ -507,25 +509,25 @@
     padding: 0;
     flex: 0 0 auto;
   }
-  .a-eye i{
+  :where(.page-unit-akun) .a-eye i{
     font-size: 18px;
     opacity: .75;
     line-height: 1;
   }
-  .a-eye:hover{ background:#eef2f7; }
+  :where(.page-unit-akun) .a-eye:hover{ background:#eef2f7; }
 
-  .a-hint{
+  :where(.page-unit-akun) .a-hint{
     font-size: 14px;
     color:#64748b;
   }
 
-  .a-sep{
+  :where(.page-unit-akun) .a-sep{
     height: 1px;
     background:#e6eef2;
     margin: 4px 0;
   }
 
-  .a-actions{
+  :where(.page-unit-akun) .a-actions{
     display:flex;
     justify-content:flex-end;
     gap: 10px;
@@ -533,7 +535,7 @@
     flex-wrap: wrap;
   }
 
-  .a-btn{
+  :where(.page-unit-akun) .a-btn{
     height: 44px;
     padding: 0 16px;
     border-radius: 12px;
@@ -548,17 +550,17 @@
     cursor:pointer;
     transition: .15s ease;
   }
-  .a-btn:hover{
+  :where(.page-unit-akun) .a-btn:hover{
     transform: translateY(-1px);
     box-shadow: 0 10px 20px rgba(2,8,23,.06);
   }
 
-  .a-btn--primary{
+  :where(.page-unit-akun) .a-btn--primary{
     background: var(--unsoed-yellow);
     border-color: rgba(0,0,0,.12);
     color: #0f172a;
   }
-  .a-btn--primary:hover{
+  :where(.page-unit-akun) .a-btn--primary:hover{
     background: var(--unsoed-yellow-dark);
   }
 </style>

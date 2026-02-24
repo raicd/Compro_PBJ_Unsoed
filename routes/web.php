@@ -3,6 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
+
 
 // Controllers
 use App\Http\Controllers\Unit\UnitController;
@@ -20,12 +22,38 @@ Route::get('/login', function () {
     return view('Auth.login');
 })->name('login');
 
-// Login (POST proses)
+// Login (POST proses) ✅ CAPTCHA DIAKTIFKAN
 Route::post('/login', function (Request $request) {
-    $credentials = $request->validate([
-        'email'    => ['required', 'email'],
-        'password' => ['required'],
+
+    // ✅ Validasi form + captcha
+    $request->validate([
+        'email'                 => ['required', 'email'],
+        'password'              => ['required'],
+        'g-recaptcha-response'  => ['required'],
+    ], [
+        'g-recaptcha-response.required' => 'Harap verifikasi captcha terlebih dahulu.',
     ]);
+
+    // ✅ Verifikasi CAPTCHA ke Google
+    $captchaResponse = $request->input('g-recaptcha-response');
+
+    $verify = Http::asForm()->post(
+        'https://www.google.com/recaptcha/api/siteverify',
+        [
+            'secret'   => config('services.recaptcha.secret_key'),
+            'response' => $captchaResponse,
+            'remoteip' => $request->ip(),
+        ]
+    )->json();
+
+    if (!($verify['success'] ?? false)) {
+        return back()
+            ->withErrors(['g-recaptcha-response' => 'Captcha tidak valid. Silakan coba lagi.'])
+            ->withInput($request->only('email'));
+    }
+
+    // ✅ Login normal
+    $credentials = $request->only('email', 'password');
 
     if (Auth::attempt($credentials, $request->boolean('remember'))) {
         $request->session()->regenerate();
@@ -35,7 +63,9 @@ Route::post('/login', function (Request $request) {
     return back()
         ->withErrors(['email' => 'Email atau kata sandi salah.'])
         ->withInput($request->only('email'));
+
 })->name('login.post');
+
 
 // Logout (POST)
 Route::post('/logout', function (Request $request) {
@@ -77,6 +107,15 @@ Route::get('/arsip/{id}', function ($id) {
 })->name('arsip.detail');
 
 
+/**
+ * ✅✅ FILE VIEWER (PUBLIC)
+ * Dipakai Landing (guest) dan juga bisa dipakai user login.
+ * GET /file-viewer?file=...&mode=public
+ */
+Route::get('/file-viewer', [UnitController::class, 'fileViewer'])
+    ->name('file.viewer');
+
+
 /*
 |--------------------------------------------------------------------------
 | Authenticated Routes
@@ -106,13 +145,6 @@ Route::middleware('auth')->group(function () {
 
         return redirect()->route('home');
     })->name('home.dashboard');
-
-    /**
-     * ✅ FILE VIEWER (GLOBAL, dipakai UNIT & PPK)
-     * GET /file-viewer?file=...
-     */
-    Route::get('/file-viewer', [UnitController::class, 'fileViewer'])
-        ->name('file.viewer');
 
     /*
     |--------------------------------------------------------------------------

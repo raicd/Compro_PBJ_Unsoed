@@ -13,11 +13,13 @@
 <section class="login-figma">
   <div class="login-figma-bg">
 
-    {{-- Banner error (dari Laravel atau session) --}}
+    {{-- Banner error --}}
     @if($hasError)
       <div class="login-error">
         @if($errors->has('email'))
           {{ $errors->first('email') }}
+        @elseif($errors->has('g-recaptcha-response'))
+          {{ $errors->first('g-recaptcha-response') }}
         @elseif(session('status'))
           {{ session('status') }}
         @else
@@ -33,7 +35,6 @@
         Silakan masukkan email dan kata sandi Anda untuk melanjutkan.
       </p>
 
-      {{-- Form login REAL (POST ke server) --}}
       <form class="login-figma-form" id="loginForm" action="{{ url('/login') }}" method="POST">
         @csrf
 
@@ -71,10 +72,26 @@
           @enderror
         </div>
 
-        <label class="fg-remember">
-          <input type="checkbox" name="remember" id="remember">
-          <span>Ingat Kata Sandi</span>
-        </label>
+        {{-- CAPTCHA CENTER --}}
+        <div class="fg" style="margin-top:20px;">
+          <label style="display:block; text-align:center; margin-bottom:10px;">
+            Verifikasi Keamanan
+          </label>
+
+          <div style="display:flex; justify-content:center;">
+            <div class="g-recaptcha"
+                 data-sitekey="{{ config('services.recaptcha.site_key') }}">
+            </div>
+          </div>
+
+          @error('g-recaptcha-response')
+            <div style="text-align:center; margin-top:8px;">
+              <span class="error-text">
+                {{ $message }}
+              </span>
+            </div>
+          @enderror
+        </div>
 
         <button class="fg-btn" type="submit">Masuk</button>
 

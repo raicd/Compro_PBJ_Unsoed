@@ -434,7 +434,6 @@
                   $key = $s['key'];
 
                   // ✅ ambil existing dari controller jika ada (dokumenExisting dari UnitController@arsipEdit)
-                  // UnitController kamu mengirim: $dokumenExisting = buildDokumenList($pengadaan)
                   // Struktur: $dokumenExisting[$field] = [ ['path'=>..., 'url'=>..., ...], ...]
                   $existingFiles = [];
                   if(isset($dokumenExisting) && is_array($dokumenExisting) && isset($dokumenExisting[$key])){
@@ -490,7 +489,7 @@
                                     <div class="tp-preview-meta">File tersimpan</div>
                                   </div>
                                 </div>
-                                {{-- ✅ FIX: hapus existing pakai AJAX ke controller hapusDokumenFile (bukan hidden *_remove[] yang tidak diproses) --}}
+                                {{-- ✅ tetap pakai AJAX delete seperti sebelumnya --}}
                                 <button type="button" class="tp-preview-remove js-remove-existing" aria-label="Hapus file">
                                   <i class="bi bi-x-lg"></i>
                                 </button>
@@ -1196,9 +1195,9 @@
       });
     });
 
-    // "Pilih File" trigger input (✅ pakai picker kalau ada)
+    // "Pilih File" trigger input
     document.querySelectorAll('.tp-dropzone').forEach(zone => {
-      const input = zone.querySelector('input.tp-file-picker[type="file"]') || zone.querySelector('input[type="file"]');
+      const input = zone.querySelector('input[type="file"]');
       const btn = zone.querySelector('.tp-drop-btn');
 
       const title = zone.querySelector('.tp-drop-title');
@@ -1242,7 +1241,7 @@
       const target = url.replace('__ID__', String(arsipId));
 
       const res = await fetch(target, {
-        method: 'DELETE', // ✅ FIX: route kamu support DELETE
+        method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRF-TOKEN': @json(csrf_token()),
@@ -1263,27 +1262,17 @@
       return res.json();
     };
 
-    // Edit mode: existing + new
+    // =========================================================
+    // ✅ FIX UTAMA (SAMAKAN DENGAN PPK):
+    // Pakai 1 input file saja (yang real) + change listener di input itu
+    // =========================================================
     document.querySelectorAll('.tp-acc-item').forEach(item => {
-      const realInput = item.querySelector('input[type="file"].tp-file-hidden[name]');
+      const fileInput = item.querySelector('input[type="file"].tp-file-hidden[name]');
       const zone = item.querySelector('.tp-dropzone');
-      if(!realInput || !zone) return;
+      if(!fileInput || !zone) return;
 
-      // ✅ FIX: bikin "picker input" terpisah biar realInput tetap nyimpen files untuk submit
-      let pickerInput = zone.querySelector('input.tp-file-picker[type="file"]');
-      if(!pickerInput){
-        pickerInput = document.createElement('input');
-        pickerInput.type = 'file';
-        pickerInput.multiple = true;
-        pickerInput.className = 'tp-file-hidden tp-file-picker';
-        pickerInput.setAttribute('data-key', realInput.getAttribute('data-key') || '');
-        pickerInput.setAttribute('data-arsip-id', realInput.getAttribute('data-arsip-id') || '');
-        // taruh sebelum real input biar tetap di dalam label
-        zone.insertBefore(pickerInput, realInput);
-      }
-
-      const arsipId = parseInt(realInput.getAttribute('data-arsip-id') || '0', 10);
-      const fieldKey = realInput.getAttribute('data-key') || '';
+      const arsipId = parseInt(fileInput.getAttribute('data-arsip-id') || '0', 10);
+      const fieldKey = fileInput.getAttribute('data-key') || '';
 
       const title = zone.querySelector('.tp-drop-title');
       const sub = zone.querySelector('.tp-drop-sub');
@@ -1300,7 +1289,7 @@
       const rebuildInputFiles = () => {
         const dt = new DataTransfer();
         storedFiles.forEach(f => dt.items.add(f));
-        realInput.files = dt.files; // ✅ FIX: yang disubmit adalah realInput
+        fileInput.files = dt.files;
       };
 
       const ensureWrapVisible = () => {
@@ -1439,9 +1428,9 @@
         });
       });
 
-      // ✅ pilih file lewat picker, lalu simpan ke realInput (untuk submit)
-      pickerInput.addEventListener('change', () => {
-        const picked = (pickerInput.files && pickerInput.files.length) ? Array.from(pickerInput.files) : [];
+      // ✅ FIX: listen change dari REAL INPUT (bukan input lain)
+      fileInput.addEventListener('change', () => {
+        const picked = (fileInput.files && fileInput.files.length) ? Array.from(fileInput.files) : [];
         if(picked.length){
           const existing = new Set(storedFiles.map(fileKey));
           picked.forEach(f => {
@@ -1451,10 +1440,12 @@
               existing.add(k);
             }
           });
-          rebuildInputFiles(); // ✅ ini yang bikin file benar2 ikut tersubmit
+          rebuildInputFiles();
         }
-        // ✅ aman dikosongkan karena ini picker, bukan real input
-        pickerInput.value = '';
+
+        // ✅ Jangan kosongkan fileInput.value (biar file tetap ikut tersubmit)
+        // fileInput.value = '';
+
         syncUI();
       });
 

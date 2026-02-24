@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>@yield('title', 'SIAPABAJA')</title>
 
+  {{-- Google reCAPTCHA --}}
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
   {{-- Nunito --}}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
