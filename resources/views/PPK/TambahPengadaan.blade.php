@@ -239,46 +239,52 @@
                 <input type="text" name="id_rup" class="tp-input" placeholder="RUP-xxxx-xxxx-xxx-xx" value="{{ old('id_rup') }}" />
               </div>
 
-              <div class="tp-field">
-                <label class="tp-label">Jenis Pengadaan</label>
-                <div class="tp-control tp-dd">
-                  <select name="jenis_pengadaan" class="tp-select tp-select-native" required>
-                    <option value="" selected disabled hidden>Pilih Jenis Pengadaan</option>
+              {{-- Jenis Pengadaan --}}
+<div class="tp-field">
+  <label class="tp-label">Jenis Pengadaan</label>
+  <div class="tp-control tp-dd">
+    <select name="jenis_pengadaan" class="tp-select tp-select-native" required>
+      <option value="" disabled {{ old('jenis_pengadaan') ? '' : 'selected' }} hidden>
+        Pilih Jenis Pengadaan
+      </option>
 
-                    {{-- ✅ value = standar dashboard, label = tampilan user --}}
-                    <option value="Tender Terbuka" {{ old('jenis_pengadaan') == 'Tender Terbuka' ? 'selected' : '' }}>
-                      Tender
-                    </option>
+      @foreach(($jenisPengadaanOptions ?? []) as $jp)
+        <option value="{{ $jp }}" {{ old('jenis_pengadaan') == $jp ? 'selected' : '' }}>
+          {{ $jp }}
+        </option>
+      @endforeach
 
-                    <option value="E-Purchasing / E-Catalog" {{ old('jenis_pengadaan') == 'E-Purchasing / E-Catalog' ? 'selected' : '' }}>
-                      E-Katalog
-                    </option>
+    </select>
 
-                    <option value="Pengadaan Langsung" {{ old('jenis_pengadaan') == 'Pengadaan Langsung' ? 'selected' : '' }}>
-                      Pengadaan Langsung
-                    </option>
+    <button type="button" class="tp-dd-btn"></button>
+    <div class="tp-dd-menu"></div>
+    <i class="bi bi-chevron-down tp-icon"></i>
+  </div>
+</div>
 
-                    <option value="Tender Terbatas" {{ old('jenis_pengadaan') == 'Tender Terbatas' ? 'selected' : '' }}>
-                      Seleksi
-                    </option>
+{{-- Metode Pengadaan --}}
+<div class="tp-field">
+  <label class="tp-label">Metode Pengadaan</label>
+  <div class="tp-control tp-dd">
+    <select name="metode_pengadaan" class="tp-select tp-select-native" required>
+      <option value="" disabled {{ old('metode_pengadaan') ? '' : 'selected' }} hidden>
+        Pilih Metode Pengadaan
+      </option>
 
-                    <option value="Penunjukan Langsung" {{ old('jenis_pengadaan') == 'Penunjukan Langsung' ? 'selected' : '' }}>
-                      Penunjukan Langsung
-                    </option>
+      @foreach(($metodePengadaanOptions ?? []) as $mp)
+        <option value="{{ $mp }}" {{ old('metode_pengadaan') == $mp ? 'selected' : '' }}>
+          {{ $mp }}
+        </option>
+      @endforeach
 
-                    <option value="Swakelola" {{ old('jenis_pengadaan') == 'Swakelola' ? 'selected' : '' }}>
-                      Swakelola
-                    </option>
-                  </select>
+    </select>
 
-                  <button type="button" class="tp-dd-btn" aria-haspopup="listbox" aria-expanded="false"></button>
-                  <div class="tp-dd-menu" role="listbox" tabindex="-1"></div>
-
-                  <i class="bi bi-chevron-down tp-icon"></i>
-                </div>
-              </div>
-
-            <div class="tp-field tp-full">
+    <button type="button" class="tp-dd-btn"></button>
+    <div class="tp-dd-menu"></div>
+    <i class="bi bi-chevron-down tp-icon"></i>
+  </div>
+</div>
+            <div class="tp-field">
                 <label class="tp-label">Status Pekerjaan</label>
                 <div class="tp-control tp-dd">
                   <select name="status_pekerjaan" class="tp-select tp-select-native" required>
@@ -1594,9 +1600,23 @@
     font-weight: 400;
   }
 
-  :where(.page-ppk-tp) .dash-app{ font-weight: 600 !important; }
-  :where(.page-ppk-tp) .dash-header h1{ font-weight: 600 !important; }
+  :where(.page-ppk-tp) .dash-header{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:6px;
+}
 
+:where(.page-ppk-tp) .dash-header h1{
+  margin:0;
+  font-weight:700;
+  color:#184f61;
+}
+
+:where(.page-ppk-tp) .dash-header p{
+  margin:0;
+  color:#64748b;
+}
   :where(.page-ppk-tp) .dash-role,
   :where(.page-ppk-tp) .dash-unit-label,
   :where(.page-ppk-tp) .dash-unit-name,

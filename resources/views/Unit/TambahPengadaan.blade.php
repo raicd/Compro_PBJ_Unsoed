@@ -42,13 +42,20 @@
   $unitOptions  = ["Fakultas Teknik", "Fakultas Hukum", "Fakultas Ekonomi dan Bisnis"];
 
   $jenisPengadaanOptions = [
+    "Pengadaan Barang",
+    "Pengadaan Pekerjaan Konstruksi",
+    "Pengadaan Jasa Konsultasi",
+    "Pengadaan Jasa Lainnya",
+];
+
+$metodePengadaanOptions = [
     "Pengadaan Langsung",
     "Penunjukan Langsung",
-    "E-Purchasing / E-Catalog",
+    "E-Purchasing / E-Catalogue",
     "Tender Terbatas",
     "Tender Terbuka",
     "Swakelola",
-  ];
+];
   $statusPekerjaanOptions = ["Perencanaan", "Pemilihan", "Pelaksanaan", "Selesai"];
 @endphp
 
@@ -173,20 +180,46 @@
                 <input type="text" name="id_rup" class="tp-input" placeholder="RUP-xxxx-xxxx-xxx-xx" />
               </div>
 
-              <div class="tp-field">
-                <label class="tp-label">Jenis Pengadaan</label>
-                <div class="tp-control">
-                  <select name="jenis_pengadaan" class="tp-select" required>
-                    <option value="" selected disabled hidden>Pilih Jenis Pengadaan</option>
-                    @foreach($jenisPengadaanOptions as $jp)
-                      <option value="{{ $jp }}">{{ $jp }}</option>
-                    @endforeach
-                  </select>
-                  <i class="bi bi-chevron-down tp-icon"></i>
-                </div>
-              </div>
+             <div class="tp-field">
+  <label class="tp-label">Jenis Pengadaan</label>
+  <div class="tp-control">
+    <select name="jenis_pengadaan" class="tp-select" required>
 
-              <div class="tp-field tp-full">
+      <option value="" {{ old('jenis_pengadaan') ? '' : 'selected' }} disabled hidden>
+        Pilih Jenis Pengadaan
+      </option>
+
+      @foreach($jenisPengadaanOptions as $jp)
+        <option value="{{ $jp }}" {{ old('jenis_pengadaan') == $jp ? 'selected' : '' }}>
+          {{ $jp }}
+        </option>
+      @endforeach
+
+    </select>
+    <i class="bi bi-chevron-down tp-icon"></i>
+  </div>
+</div>
+
+              <div class="tp-field">
+  <label class="tp-label">Metode Pengadaan</label>
+  <div class="tp-control">
+    <select name="metode_pengadaan" class="tp-select" required>
+
+      <option value="" {{ old('metode_pengadaan') ? '' : 'selected' }} disabled hidden>
+        Pilih Metode Pengadaan
+      </option>
+
+      @foreach($metodePengadaanOptions as $mp)
+        <option value="{{ $mp }}" {{ old('metode_pengadaan') == $mp ? 'selected' : '' }}>
+          {{ $mp }}
+        </option>
+      @endforeach
+
+    </select>
+    <i class="bi bi-chevron-down tp-icon"></i>
+  </div>
+</div>
+              <div class="tp-field">
                 <label class="tp-label">Status Pekerjaan</label>
                 <div class="tp-control">
                   <select name="status_pekerjaan" class="tp-select" required>
@@ -1500,7 +1533,29 @@
   }
 
   :where(.page-unit-tp) .dash-app{ font-weight: 600 !important; }
-  :where(.page-unit-tp) .dash-header h1{ font-weight: 600 !important; }
+  /* khusus halaman unit */
+.page-unit-tp .dash-header{
+  margin-bottom:18px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  text-align:left;
+  gap:6px;
+}
+
+.page-unit-tp .dash-header h1{
+  margin:0;
+  font-size:34px;
+  font-weight:700;
+  color:#184f61;
+}
+
+.page-unit-tp .dash-header p{
+  margin:0;
+  font-size:15px;
+  color:#184f61;
+  opacity:0.85;
+}
 
   :where(.page-unit-tp) .dash-role,
   :where(.page-unit-tp) .dash-unit-label,

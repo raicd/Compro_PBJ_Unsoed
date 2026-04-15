@@ -248,10 +248,28 @@
     font-weight: 400;
   }
 
-  /* Header tetap konsisten seperti halaman lain */
-  :where(.page-unit-akun) .dash-app{ font-weight: 600 !important; }
-  :where(.page-unit-akun) .dash-header h1{ font-weight: 600 !important; }
-  :where(.page-unit-akun) .dash-header p{ font-weight: 400 !important; }
+  .dash-header{
+  margin-bottom:18px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start; /* 🔥 ini kuncinya */
+  text-align:left;        /* 🔥 paksa ke kiri */
+  gap:6px;
+}
+
+.dash-header h1{
+  margin:0;
+  font-size:34px;
+  font-weight:700;
+  color:#184f61;
+}
+
+.dash-header p{
+  margin:0;
+  font-size:15px;
+  color:#184f61;
+  opacity:0.85;
+}
 
   /* Sidebar footer actions sama seperti tambah pengadaan */
   :where(.page-unit-akun) .dash-sidebar{ display:flex; flex-direction:column; }

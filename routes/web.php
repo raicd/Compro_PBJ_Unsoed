@@ -5,10 +5,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 
-
 // Controllers
 use App\Http\Controllers\Unit\UnitController;
 use App\Http\Controllers\PPK\PpkController;
+use App\Http\Controllers\SuperAdmin\SuperAdminController;
 
 /*
 |--------------------------------------------------------------------------
@@ -22,10 +22,9 @@ Route::get('/login', function () {
     return view('Auth.login');
 })->name('login');
 
-// Login (POST proses) ✅ CAPTCHA DIAKTIFKAN
+// Login (POST proses)
 Route::post('/login', function (Request $request) {
 
-    // ✅ Validasi form + captcha
     $request->validate([
         'email'                 => ['required', 'email'],
         'password'              => ['required'],
@@ -34,7 +33,6 @@ Route::post('/login', function (Request $request) {
         'g-recaptcha-response.required' => 'Harap verifikasi captcha terlebih dahulu.',
     ]);
 
-    // ✅ Verifikasi CAPTCHA ke Google
     $captchaResponse = $request->input('g-recaptcha-response');
 
     $verify = Http::asForm()->post(
@@ -52,7 +50,6 @@ Route::post('/login', function (Request $request) {
             ->withInput($request->only('email'));
     }
 
-    // ✅ Login normal
     $credentials = $request->only('email', 'password');
 
     if (Auth::attempt($credentials, $request->boolean('remember'))) {
@@ -65,7 +62,6 @@ Route::post('/login', function (Request $request) {
         ->withInput($request->only('email'));
 
 })->name('login.post');
-
 
 // Logout (POST)
 Route::post('/logout', function (Request $request) {
@@ -88,10 +84,7 @@ Route::view('/home', 'Home.index')->name('home');
 Route::view('/home-preview', 'Home.index')->name('home.preview');
 
 // Arsip Publik (Landing)
-// ✅ Nama route tetap "ArsipPBJ" biar navbar lama tidak error
 Route::view('/ArsipPBJ', 'Landing.pbj')->name('ArsipPBJ');
-
-// ✅ Alias "landing.pbj" TANPA bentrok URI (pakai redirect ke /ArsipPBJ)
 Route::redirect('/landing/ArsipPBJ', '/ArsipPBJ')->name('landing.pbj');
 
 // Arsip Publik (Home)
@@ -106,15 +99,9 @@ Route::get('/arsip/{id}', function ($id) {
     return view('Landing.LihatDetail', compact('id'));
 })->name('arsip.detail');
 
-
-/**
- * ✅✅ FILE VIEWER (PUBLIC)
- * Dipakai Landing (guest) dan juga bisa dipakai user login.
- * GET /file-viewer?file=...&mode=public
- */
+// File viewer
 Route::get('/file-viewer', [UnitController::class, 'fileViewer'])
     ->name('file.viewer');
-
 
 /*
 |--------------------------------------------------------------------------
@@ -127,14 +114,13 @@ Route::middleware('auth')->group(function () {
         return redirect()->route('home');
     })->name('dashboard');
 
-    /**
-     * ✅✅ BARU: DASHBOARD REDIRECT BERDASARKAN ROLE
-     * Dipakai untuk link "Dasbor" di navbar Home.
-     */
     Route::get('/home/dashboard', function () {
-        $role = strtolower(trim((string)(auth()->user()->role ?? '')));
+        $role = strtolower(trim((string) (auth()->user()->role ?? '')));
 
-        // normalisasi nama role yang sering beda-beda
+        if (in_array($role, ['super admin', 'superadmin', 'super_admin'], true)) {
+            return redirect()->route('superadmin.dashboard');
+        }
+
         if (in_array($role, ['ppk', 'ppk utama', 'ppk_utama'], true)) {
             return redirect()->route('ppk.dashboard');
         }
@@ -223,52 +209,133 @@ Route::middleware('auth')->group(function () {
             ->name('akun.update');
     });
 
+
     /*
     |--------------------------------------------------------------------------
     | PPK ROUTES
     |--------------------------------------------------------------------------
     */
-    Route::prefix('ppk')->name('ppk.')->group(function () {
+    Route::prefix('ppk')
+        ->name('ppk.')
+        ->middleware('role:ppk')
+        ->group(function () {
 
-        Route::get('/dashboard', [PpkController::class, 'dashboard'])
+            Route::get('/dashboard', [PpkController::class, 'dashboard'])
+                ->name('dashboard');
+
+            Route::get('/dashboard/data', [PpkController::class, 'dashboardData'])
+                ->name('dashboard.data');
+
+            Route::get('/arsip', [PpkController::class, 'arsipIndex'])
+                ->name('arsip');
+
+            Route::get('/arsip/{id}/edit', [PpkController::class, 'arsipEdit'])
+                ->name('arsip.edit');
+
+            Route::put('/arsip/{id}', [PpkController::class, 'arsipUpdate'])
+                ->name('arsip.update');
+
+            Route::delete('/arsip/{id}/delete', [PpkController::class, 'arsipDelete'])
+                ->name('arsip.delete');
+
+            Route::get('/pengadaan/tambah', [PpkController::class, 'pengadaanCreate'])
+                ->name('pengadaan.create');
+
+            Route::post('/pengadaan/store', [PpkController::class, 'pengadaanStore'])
+                ->name('pengadaan.store');
+
+            Route::get('/arsip/{id}/dokumen/{field}/{file}', [PpkController::class, 'showDokumen'])
+                ->where(['field' => '[A-Za-z0-9_\-]+', 'file' => '.+'])
+                ->name('arsip.dokumen.show');
+
+            Route::get('/kelola-akun', [PpkController::class, 'kelolaAkun'])
+                ->name('kelola.akun');
+
+            Route::put('/akun', [PpkController::class, 'updateAkun'])
+                ->name('akun.update');
+            
+            Route::get('/histori', [PpkController::class, 'histori'])
+                ->name('histori');
+        });
+
+    /*
+    |--------------------------------------------------------------------------
+    | SUPER ADMIN ROUTES
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('super-admin')
+    ->name('superadmin.')
+    ->middleware('role:super admin')
+    ->group(function () {
+
+        Route::get('/dashboard', [SuperAdminController::class, 'dashboard'])
             ->name('dashboard');
 
-        // ✅ TAMBAHAN: endpoint statistik dashboard (biar route('ppk.dashboard.data') gak error)
-        Route::get('/dashboard/data', [PpkController::class, 'dashboardData'])
+        Route::get('/dashboard/data', [SuperAdminController::class, 'dashboardData'])
             ->name('dashboard.data');
 
-        Route::get('/arsip', [PpkController::class, 'arsipIndex'])
+        Route::get('/arsip', [SuperAdminController::class, 'arsipIndex'])
             ->name('arsip');
 
-        Route::get('/arsip/{id}/edit', [PpkController::class, 'arsipEdit'])
+        Route::get('/arsip/{id}/edit', [SuperAdminController::class, 'arsipEdit'])
             ->name('arsip.edit');
 
-        Route::put('/arsip/{id}', [PpkController::class, 'arsipUpdate'])
+        Route::put('/arsip/{id}', [SuperAdminController::class, 'arsipUpdate'])
             ->name('arsip.update');
 
-        // ✅✅ FIX UTAMA: ROUTE HAPUS ARSIP PPK (sesuai yang dipanggil Blade: /ppk/arsip/{id}/delete)
-        Route::delete('/arsip/{id}/delete', [PpkController::class, 'arsipDelete'])
+        Route::delete('/arsip/{id}/delete', [SuperAdminController::class, 'arsipDelete'])
             ->name('arsip.delete');
 
-        Route::get('/pengadaan/tambah', [PpkController::class, 'pengadaanCreate'])
+        Route::get('/pengadaan/tambah', [SuperAdminController::class, 'pengadaanCreate'])
             ->name('pengadaan.create');
 
-        Route::post('/pengadaan/store', [PpkController::class, 'pengadaanStore'])
+        Route::post('/pengadaan/store', [SuperAdminController::class, 'pengadaanStore'])
             ->name('pengadaan.store');
 
-        /**
-         * ✅ ROUTE DOKUMEN PPK (WAJIB, dipakai buildDokumenList & showDokumen)
-         * route('ppk.arsip.dokumen.show', ...)
-         */
-        Route::get('/arsip/{id}/dokumen/{field}/{file}', [PpkController::class, 'showDokumen'])
+        Route::get('/arsip/{id}/dokumen/{field}/{file}', [SuperAdminController::class, 'showDokumen'])
             ->where(['field' => '[A-Za-z0-9_\-]+', 'file' => '.+'])
             ->name('arsip.dokumen.show');
 
-        Route::get('/kelola-akun', [PpkController::class, 'kelolaAkun'])
+        Route::get('/kelola-menu', [SuperAdminController::class, 'kelolaMenu'])
+            ->name('kelola.menu');
+
+        // =========================
+        // KELOLA AKUN
+        // =========================
+        Route::get('/kelola-akun', [SuperAdminController::class, 'kelolaAkun'])
             ->name('kelola.akun');
 
-        Route::put('/akun', [PpkController::class, 'updateAkun'])
-            ->name('akun.update');
-    });
+        Route::get('/kelola-akun/ppk', [SuperAdminController::class, 'kelolaAkunPpk'])
+            ->name('kelola.akun.ppk');
 
+        Route::get('/kelola-akun/unit', [SuperAdminController::class, 'kelolaAkunUnit'])
+            ->name('kelola.akun.unit');
+
+        Route::put('/akun', [SuperAdminController::class, 'updateAkun'])
+            ->name('akun.update');
+        
+        Route::get('/kelola-akun/ppk', [SuperAdminController::class, 'kelolaAkunPpk'])
+            ->name('kelola.akun.ppk');
+
+        Route::post('/kelola-akun/ppk', [SuperAdminController::class, 'storePpk'])
+            ->name('kelola.akun.ppk.store');
+
+        Route::put('/kelola-akun/ppk/{id}', [SuperAdminController::class, 'updatePpk'])
+            ->name('kelola.akun.ppk.update');
+
+        Route::delete('/kelola-akun/ppk/{id}', [SuperAdminController::class, 'destroyPpk'])
+            ->name('kelola.akun.ppk.destroy');
+
+        Route::get('/kelola-akun/unit', [SuperAdminController::class, 'kelolaAkunUnit'])
+            ->name('kelola.akun.unit');
+
+        Route::post('/kelola-akun/unit', [SuperAdminController::class, 'storeUnit'])
+            ->name('kelola.akun.unit.store');
+
+        Route::put('/kelola-akun/unit/{id}', [SuperAdminController::class, 'updateUnit'])
+            ->name('kelola.akun.unit.update');
+
+        Route::delete('/kelola-akun/unit/{id}', [SuperAdminController::class, 'destroyUnit'])
+            ->name('kelola.akun.unit.destroy');
+    });
 });

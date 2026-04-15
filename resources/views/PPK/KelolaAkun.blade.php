@@ -248,17 +248,23 @@
   html, body{ height:100%; overflow:hidden; }
   .dash-wrap, .dash-main{ height:100vh; overflow:hidden; }
 
-  .dash-header h1{
-    font-weight: 600 !important;
-    font-size: 30px;
-    line-height: 1.2;
-  }
-  .dash-header p{
-    font-weight: 400 !important;
-    font-size: 16px;
-    margin-top: 6px;
-    opacity: .9;
-  }
+  .dash-header{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:6px;
+}
+
+.dash-header h1{
+  margin:0;
+  font-weight:700;
+  color:#184f61;
+}
+
+.dash-header p{
+  margin:0;
+  color:#64748b;
+}
 
   .a-alert{
     margin-top: 12px;

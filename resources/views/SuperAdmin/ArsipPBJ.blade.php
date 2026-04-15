@@ -1,4 +1,3 @@
-{{-- resources/views/PPK/ArsipPBJ.blade.php --}}
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -23,7 +22,7 @@
     throw new \RuntimeException('Variable $arsips (paginator) tidak dikirim dari controller.');
   }
 
-  $unitName = auth()->user()->name ?? "PPK";
+  $unitName = auth()->user()->name ?? "Super Admin";
 
   $initialQ      = (string) request()->query('q', '');
   $initialUnit   = (string) request()->query('unit', 'Semua');
@@ -56,12 +55,7 @@
       $docNote = implode(', ', array_map(fn($x) => is_string($x) ? $x : json_encode($x), $rawE));
     } else {
       $eVal = is_string($rawE) ? trim($rawE) : $rawE;
-      if (
-        $eVal === true ||
-        $eVal === 1 ||
-        $eVal === "1" ||
-        (is_string($eVal) && in_array(strtolower($eVal), ["ya","iya","true","yes"], true))
-      ) {
+      if ($eVal === true || $eVal === 1 || $eVal === "1" || (is_string($eVal) && in_array(strtolower($eVal), ["ya","iya","true","yes"], true))) {
         $docNote = "Dokumen pada Kolom E bersifat opsional (tidak dipersyaratkan).";
       } elseif (is_string($eVal) && $eVal !== "") {
         $docNote = $eVal;
@@ -73,27 +67,23 @@
       $decoded = json_decode($dokumen, true);
       if (json_last_error() === JSON_ERROR_NONE) $dokumen = $decoded;
     }
-
     if (empty($dokumen)) {
       $grouped = [];
       foreach ($r as $k => $v) {
         if ($v === null || $v === '') continue;
         if (in_array($k, ['dokumen', 'dokumen_tidak_dipersyaratkan', 'kolom_e', 'doc_note'], true)) continue;
-
         $lk = strtolower((string)$k);
         if (str_contains($lk, 'dokumen') || str_contains($lk, 'file') || str_contains($lk, 'lampiran')) {
           if (is_string($v)) {
             $try = json_decode($v, true);
             if (json_last_error() === JSON_ERROR_NONE) $v = $try;
           }
-
           if (is_array($v)) $grouped[$k] = $v;
           else $grouped[$k] = [$v];
         }
       }
       $dokumen = $grouped;
     }
-
     if (empty($dokumen)) $dokumen = [];
 
     return [
@@ -132,7 +122,15 @@
     sort($unitOptions);
   }
 
-  $deleteUrlTemplate = route('ppk.arsip.delete', ['id' => '__ID__']);
+  $deleteUrlTemplate = null;
+  if (\Illuminate\Support\Facades\Route::has('superadmin.arsip.delete')) {
+    $deleteUrlTemplate = route('superadmin.arsip.delete', ['id' => '__ID__']);
+  } elseif (\Illuminate\Support\Facades\Route::has('superadmin.arsip.destroy')) {
+    $deleteUrlTemplate = route('superadmin.arsip.destroy', ['id' => '__ID__']);
+  } else {
+    $deleteUrlTemplate = url('/super-admin/arsip/__ID__/delete');
+  }
+
   $qs = request()->except('page');
 
   $toastMessage = session('success')
@@ -142,6 +140,7 @@
 @endphp
 
 <div class="dash-wrap">
+  {{-- ======= SIDEBAR ======= --}}
   <aside class="dash-sidebar">
     <div class="dash-brand">
       <div class="dash-logo">
@@ -149,31 +148,33 @@
       </div>
       <div class="dash-text">
         <div class="dash-app">SIAPABAJA</div>
-        <div class="dash-role">ADMIN (PPK)</div>
+        <div class="dash-role">Super Admin </div>
       </div>
     </div>
 
     <nav class="dash-nav">
-  <a class="dash-link" href="{{ route('ppk.dashboard') }}">
-    <span class="ic"><i class="bi bi-grid-fill"></i></span>
-    Dashboard
-  </a>
-
-  <a class="dash-link active" href="{{ route('ppk.arsip') }}">
-    <span class="ic"><i class="bi bi-archive"></i></span>
-    Arsip PBJ
-  </a>
-
-  <a class="dash-link" href="{{ route('ppk.pengadaan.create') }}">
-    <span class="ic"><i class="bi bi-plus-square"></i></span>
-    Tambah Pengadaan
-  </a>
-
-  <a class="dash-link {{ request()->routeIs('ppk.kelola.akun') ? 'active' : '' }}" href="{{ route('ppk.kelola.akun') }}">
-    <span class="ic"><i class="bi bi-person-gear"></i></span>
-    Kelola Akun
-  </a>
-</nav>
+      <a class="dash-link" href="{{ route('superadmin.dashboard') }}">
+        <span class="ic"><i class="bi bi-grid-fill"></i></span>
+        Dashboard
+      </a>
+      <a class="dash-link active" href="{{ route('superadmin.arsip') }}">
+        <span class="ic"><i class="bi bi-archive-fill"></i></span>
+        Arsip PBJ
+      </a>
+      <a class="dash-link" href="{{ route('superadmin.pengadaan.create') }}">
+        <span class="ic"><i class="bi bi-plus-square-fill"></i></span>
+        Tambah Pengadaan
+      </a>
+      <a class="dash-link" href="{{ route('superadmin.kelola.menu') }}">
+        <span class="ic"><i class="bi bi-gear-fill"></i></span>
+        Kelola Menu
+      </a>
+      <a class="dash-link {{ request()->routeIs('superadmin.kelola.akun') ? 'active' : '' }}" href="{{ route('superadmin.kelola.akun') }}">
+        <span class="ic"><i class="bi bi-person-gear"></i></span>
+        Kelola Akun
+        <i class="bi bi-chevron-right dash-link-chevron"></i>
+      </a>
+    </nav>
 
     <div class="dash-side-actions">
       <a class="dash-side-btn" href="{{ route('home') }}">
@@ -187,19 +188,24 @@
     </div>
   </aside>
 
+  {{-- ======= MAIN ======= --}}
   <main class="dash-main">
-    <header class="dash-header ap-header">
-      <div class="ap-header-left">
-        <h1>Arsip PBJ</h1>
-        <p>Kelola arsip pengadaan barang dan jasa Universitas Jenderal Soedirman</p>
-      </div>
-      <div class="ap-header-right">
-        <button type="button" id="apPrintBtn" class="ap-export-btn" title="Ekspor ke Excel">
-          Ekspor Excel
-        </button>
-      </div>
-    </header>
 
+    {{-- Header --}}
+    <header class="ap-header">
+    <div class="ap-header-left">
+        <h1>Daftar Arsip PBJ</h1>
+        <p>Kelola seluruh arsip pengadaan dari semua unit kerja</p>
+    </div>
+
+    <div class="ap-header-right">
+        <button class="ap-export-btn">
+            Ekspor Excel
+        </button>
+    </div>
+</header>
+
+    {{-- Toast --}}
     @if(!empty($toastMessage))
       <div class="nt-wrap" id="ntWrap" aria-live="polite" aria-atomic="true">
         <div class="nt-toast nt-success" id="ntToast" role="status" data-autohide="true">
@@ -216,6 +222,7 @@
       </div>
     @endif
 
+    {{-- Filter --}}
     <section class="ap-filter-bar">
       <div class="ap-search-wrap">
         <i class="bi bi-search ap-search-ic"></i>
@@ -253,14 +260,15 @@
         <button type="button" id="apRefreshBtn" class="ap-tool-btn" title="Refresh">
           <i class="bi bi-arrow-clockwise"></i>
         </button>
-
-        <button type="button" id="apHistoryBtn" class="ap-tool-btn" title="Histori">
+        <button type="button" class="ap-tool-btn" title="Histori">
           <i class="bi bi-calendar3"></i>
         </button>
       </div>
     </section>
 
+    {{-- Table --}}
     <section class="ap-table-section">
+      {{-- Table Head --}}
       <div class="ap-tbl-head">
         <div class="ap-col-check">
           <input id="apSelectAll" type="checkbox" class="ap-checkbox" aria-label="Pilih semua" />
@@ -284,6 +292,7 @@
         <div class="ap-col ap-col-aksi">Aksi</div>
       </div>
 
+      {{-- Table Body --}}
       @foreach($rows as $r)
         @php
           $sp = strtolower(trim((string)($r['status_pekerjaan'] ?? '')));
@@ -337,6 +346,7 @@
           </div>
 
           <div class="ap-col ap-col-aksi">
+            {{-- Info / Detail --}}
             <button type="button"
               class="aksi-btn aksi-info js-open-detail"
               title="Detail"
@@ -355,10 +365,12 @@
               <i class="bi bi-info-circle-fill"></i>
             </button>
 
-            <a href="{{ route('ppk.arsip.edit', $r['id']) }}" class="aksi-btn aksi-edit" title="Edit">
+            {{-- Edit --}}
+            <a href="/super-admin/arsip/{{ $r['id'] }}/edit" class="aksi-btn aksi-edit" title="Edit">
               <i class="bi bi-pencil-fill"></i>
             </a>
 
+            {{-- Delete --}}
             <button type="button"
               class="aksi-btn aksi-delete js-single-delete"
               title="Hapus"
@@ -369,6 +381,7 @@
         </div>
       @endforeach
 
+      {{-- Pagination --}}
       <div class="ap-pagination-wrap">
         <div class="ap-page-info">
           Halaman {{ $arsips->currentPage() }} dari {{ $arsips->lastPage() }}
@@ -407,6 +420,7 @@
   </main>
 </div>
 
+{{-- ======= DETAIL MODAL ======= --}}
 <div class="dt-modal" id="dtModal" aria-hidden="true">
   <div class="dt-backdrop" data-close="true"></div>
   <div class="dt-panel" role="dialog" aria-modal="true" aria-labelledby="dtTitle">
@@ -443,7 +457,7 @@
           <div class="dt-info">
             <div class="dt-ic"><i class="bi bi-folder2"></i></div>
             <div class="dt-info-txt">
-              <div class="dt-label">Status Pekerjaan</div>
+              <div class="dt-label">Metode Pengadaan</div>
               <div class="dt-val" id="dtStatus">-</div>
             </div>
           </div>
@@ -462,9 +476,7 @@
             </div>
           </div>
         </div>
-
         <div class="dt-divider"></div>
-
         <div class="dt-section-title">Informasi Anggaran</div>
         <div class="dt-budget-grid">
           <div class="dt-budget">
@@ -480,13 +492,10 @@
             <div class="dt-money" id="dtKontrak">-</div>
           </div>
         </div>
-
         <div class="dt-divider"></div>
-
         <div class="dt-section-title">Dokumen Pengadaan</div>
         <div class="dt-doc-grid" id="dtDocList"></div>
         <div class="dt-doc-empty" id="dtDocEmpty" hidden>Tidak ada dokumen yang diupload.</div>
-
         <div class="dt-doc-note" id="dtDocNoteWrap" hidden>
           <div class="dt-doc-note-ic"><i class="bi bi-info-circle"></i></div>
           <div class="dt-doc-note-txt">
@@ -499,6 +508,7 @@
   </div>
 </div>
 
+{{-- ======= CONFIRM DELETE MODAL ======= --}}
 <div class="cf-modal" id="cfModal" aria-hidden="true">
   <div class="cf-backdrop" data-close="true"></div>
   <div class="cf-panel" role="dialog" aria-modal="true" aria-labelledby="cfTitle" aria-describedby="cfDesc">
@@ -524,43 +534,9 @@
   </div>
 </div>
 
-<div class="hist-overlay" id="histOverlay" aria-hidden="true">
-  <div class="hist-backdrop" id="histBackdrop"></div>
-
-  <div class="hist-panel" role="dialog" aria-modal="true" aria-labelledby="histTitle">
-    <div class="hist-topbar">
-      <button type="button" class="hist-back" id="histBackBtn">
-        <i class="bi bi-chevron-left"></i> Kembali
-      </button>
-      <div class="hist-topbar-right">
-        <button type="button" class="hist-export-btn" id="histExportBtn" title="Export Histori ke Excel">
-          <i class="bi bi-clipboard2-pulse"></i>
-        </button>
-      </div>
-    </div>
-
-    <div class="hist-body">
-      <div class="hist-header">
-        <h2 class="hist-title" id="histTitle">Histori Aktivitas</h2>
-      </div>
-
-      <div class="hist-table-wrap">
-        <div class="hist-tbl-head">
-          <div class="hist-col">Waktu</div>
-          <div class="hist-col">Nama Akun</div>
-          <div class="hist-col">Role</div>
-          <div class="hist-col">Unit Kerja</div>
-          <div class="hist-col">Aktivitas</div>
-        </div>
-        <div id="histTableBody">
-          <div class="hist-empty" id="histEmpty" hidden>Tidak ada histori aktivitas.</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
+{{-- ======= STYLES ======= --}}
 <style>
+/* ─── CSS Variables ─── */
 :root {
   --sidebar-bg: #184f61;
   --sidebar-hover: rgba(255,255,255,.07);
@@ -569,10 +545,12 @@
   --sidebar-txt: rgba(255,255,255,.75);
   --sidebar-brand-txt: #fff;
   --sidebar-role-txt: rgba(255,255,255,.55);
+
   --yellow: #f6c100;
   --yellow-dark: #d9aa00;
   --navy: #184f61;
   --navy2: #184f61;
+
   --border: #e8eef3;
   --tbl-head-bg: #184f61;
   --tbl-head-txt: #fff;
@@ -581,48 +559,93 @@
 }
 
 body.page-arsip.dash-body { font-family: 'Nunito', sans-serif; font-size: 15px; }
+
+/* ─── Layout ─── */
 .dash-wrap { display: flex; min-height: 100vh; background: #f4f7fa; }
 
-.ap-header{
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-start;
-  gap:12px;
+/* ─── Main ─── */
+.dash-main { flex: 1; min-width: 0; padding: 28px 28px 40px; display: flex; flex-direction: column; gap: 20px; }
+
+/* ================= HEADER ================= */
+.ap-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between; 
+    align-items: flex-start;
+    gap: 12px;
 }
 
-.dash-header h1{
-  margin:0;
-  font-weight:700;
-  color:#184f61;
+/* LEFT TEXT */
+.ap-header h1 {
+    margin: 0;
+    font-size: 26px;
+    font-weight: var(--fw-semi);
+    color: var(--navy2);
 }
 
-.dash-header p{
-  margin:0;
-  color:#64748b;
+.ap-header p {
+    margin: 0;
+    font-size: 15px;
+    color: var(--muted);
+    font-weight: var(--fw-normal);
 }
 
+/* OPTIONAL (kalau mau wrapper left) */
+.ap-header-left {
+    display: flex;
+    flex-direction: column;
+}
+/* RIGHT */
+.ap-header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* BUTTON */
 .ap-export-btn {
-  height: 44px;
-  padding: 0 20px;
-  border-radius: 12px;
-  border: 1px solid rgba(0,0,0,.08);
-  background: var(--yellow);
-  color: #1b1b1b;
-  font-size: 14px;
-  font-weight: 700;
-  font-family: 'Nunito', sans-serif;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: .15s ease;
-  white-space: nowrap;
-  box-shadow: 0 4px 14px rgba(246,193,0,.30);
-  letter-spacing: .4px;
+    height: 44px;
+    padding: 0 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,.08);
+    background: #f6c100;
+    color: #1b1b1b;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: 'Nunito', sans-serif;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: .15s ease;
+    white-space: nowrap;
+    box-shadow: 0 4px 14px rgba(246,193,0,.30);
 }
-.ap-export-btn:hover { background: var(--yellow-dark); transform: translateY(-1px); }
-.ap-export-btn:disabled { opacity: .6; cursor: not-allowed; }
 
+.ap-export-btn:hover {
+    background: #d9aa00;
+    transform: translateY(-1px);
+}
+
+.ap-export-btn:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+    .ap-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .ap-header-right {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
+
+/* ─── Filter Bar ─── */
 .ap-filter-bar {
   display: flex;
   align-items: center;
@@ -701,6 +724,8 @@ body.page-arsip.dash-body { font-family: 'Nunito', sans-serif; font-size: 15px; 
 }
 .ap-tool-btn:hover { background: var(--navy); color: #fff; border-color: var(--navy); }
 
+/* ─── Table Section ─── */
+/* FIX SCROLL: gabungkan jadi 1 rule, pakai overflow-x: auto */
 .ap-table-section {
   background: #fff;
   border: 1px solid var(--border);
@@ -710,15 +735,18 @@ body.page-arsip.dash-body { font-family: 'Nunito', sans-serif; font-size: 15px; 
   max-height: 600px;
 }
 
+/* Grid: check | tahun | unit | pekerjaan | metode | nilai | status | aksi */
 .ap-tbl-head,
 .ap-tbl-row {
   display: grid;
-  grid-template-columns: 44px 72px 1.3fr 2.2fr 180px 1.4fr 1.1fr 110px;
+  grid-template-columns: 44px 80px 1.4fr 2.2fr 1.3fr 1.4fr 1.2fr 120px;
   align-items: center;
-  column-gap: 14px;
-  padding: 0 16px;
+  column-gap: 16px;
+  padding: 0 18px;
+  min-width: 900px; /* pastikan grid tidak menyempit di layar kecil */
 }
 
+/* Head */
 .ap-tbl-head {
   background: var(--tbl-head-bg);
   min-height: 52px;
@@ -736,22 +764,30 @@ body.page-arsip.dash-body { font-family: 'Nunito', sans-serif; font-size: 15px; 
 .ap-tbl-head .ap-col-check { display: flex; align-items: center; justify-content: center; }
 .ap-tbl-head .ap-col-nilai { display: flex; align-items: center; gap: 4px; }
 
+/* Sort button */
 .ap-sort-btn {
   width: 28px; height: 28px;
   border: none; background: transparent;
   display: inline-flex; align-items: center; justify-content: center;
   cursor: pointer; border-radius: 8px;
-  color: #fff; transition: .15s; padding: 0;
+  color: #fff;
+  transition: .15s;
+  padding: 0;
 }
 .ap-sort-btn:hover { background: rgba(255,255,255,.15); }
 .ap-sort-btn i { font-size: 16px; display: block; line-height: 1; }
 
+/* Row */
 .ap-tbl-row {
   min-height: 64px;
   border-top: 1px solid var(--tbl-row-border);
-  transition: background .12s;
+  transition: all 0.15s ease;
 }
-.ap-tbl-row:hover { background: #f8fbfe; }
+
+.ap-tbl-row:hover {
+  background: #f8fbff;
+  transform: translateY(-1px);
+}
 
 .ap-col { font-size: 14px; color: #1e293b; min-width: 0; overflow-wrap: anywhere; }
 .ap-col-tahun { text-align: center; font-weight: 700; color: #374151; }
@@ -760,35 +796,39 @@ body.page-arsip.dash-body { font-family: 'Nunito', sans-serif; font-size: 15px; 
 .ap-col-nilai { font-weight: 700; color: var(--navy2); white-space: nowrap; }
 .ap-col-aksi  { display: flex; align-items: center; gap: 6px; justify-content: center; }
 .ap-col-status { display: flex; align-items: center; }
-.ap-col-metode {display: flex;align-items: center;justify-content: center;}
+.ap-col-metode { display: flex; align-items: center; }
 
+/* Checkbox */
 .ap-checkbox {
   width: 17px; height: 17px; border-radius: 5px;
   cursor: pointer; accent-color: var(--navy);
 }
 .ap-col-check { display: flex; align-items: center; justify-content: center; }
 
+/* Metode Badge */
 .metode-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-
-  width: 160px;       
-  min-height: 34px;
-
-  padding: 6px 10px;
+  padding: 6px 12px;
   border-radius: 8px;
   background: #dbeafe;
   color: #1e40af;
-
   font-size: 13px;
   font-weight: 700;
-  line-height: 1.2;
-
+  line-height: 1.4;
+  width: 160px;        
+  height: 34px; 
   text-align: center;
-  word-break: break-word; 
-
 }
+
+.ap-col-metode {
+  display: flex;
+  align-items: center;
+  justify-content: center; 
+}
+
+/* Status Badges */
 .sp-badge {
   display: inline-flex;
   align-items: center;
@@ -805,6 +845,7 @@ body.page-arsip.dash-body { font-family: 'Nunito', sans-serif; font-size: 15px; 
 .sp-do     { background: #fee2e2; color: #b91c1c; }
 .sp-done   { background: #dcfce7; color: #15803d; }
 
+/* Aksi icon buttons */
 .aksi-btn {
   width: 34px; height: 34px;
   border: 1px solid var(--border);
@@ -825,6 +866,7 @@ body.page-arsip.dash-body { font-family: 'Nunito', sans-serif; font-size: 15px; 
 .aksi-edit:hover  { background: #fefce8; border-color: #fde68a; color: #a16207; }
 .aksi-delete:hover { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
 
+/* ─── Pagination ─── */
 .ap-pagination-wrap {
   display: flex;
   align-items: center;
@@ -832,6 +874,7 @@ body.page-arsip.dash-body { font-family: 'Nunito', sans-serif; font-size: 15px; 
   gap: 12px;
   padding: 14px 16px;
   border-top: 1px solid var(--tbl-row-border);
+  min-width: 900px; /* ikut min-width grid */
 }
 .ap-pagination-wrap {
   position: sticky;
@@ -854,16 +897,17 @@ body.page-arsip.dash-body { font-family: 'Nunito', sans-serif; font-size: 15px; 
 .ap-page-btn.is-disabled { opacity: .45; pointer-events: none; }
 .ap-page-btn.is-ellipsis { pointer-events: none; background: transparent; border-color: transparent; }
 
+/* ─── Detail Modal ─── */
 .dt-modal { position: fixed; inset: 0; z-index: 9999; display: none; }
 .dt-modal.is-open { display: flex; align-items: center; justify-content: center; padding: 10px; }
 .dt-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.35); backdrop-filter: blur(8px); }
-.dt-panel { width: min(1100px, 96vw); max-height: calc(100vh - 20px); display: flex; position: relative; z-index: 1; border-radius: 20px; overflow: hidden; }
+.dt-panel { width: min(1100px, 96vw); max-height: calc(100vh - 20px); display: flex; flex-direction: column; position: relative; z-index: 1; border-radius: 20px; overflow: hidden; }
 .dt-card { width: 100%; display: flex; flex-direction: column; min-height: 0; border-radius: 20px; background: #fff; overflow: hidden; }
 .dt-topbar { position: sticky; top: 0; z-index: 3; background: #fff; padding: 18px 18px 12px; border-bottom: 1px solid #eef3f6; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .dt-title { font-size: 18px; font-weight: 800; color: #0f172a; flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .dt-close-inside { flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px; border: 1px solid #e8eef3; background: #f8fafc; display: grid; place-items: center; padding: 0; cursor: pointer; }
 .dt-close-inside i { font-size: 16px; }
-.dt-body { padding: 16px 18px 20px; overflow-y: auto; min-height: 0; overscroll-behavior: contain; }
+.dt-body { flex: 1; overflow-y: auto; min-height: 0; padding: 16px 18px 20px; overscroll-behavior: contain; }
 .dt-info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .dt-info { display: flex; gap: 10px; align-items: flex-start; }
 .dt-ic { width: 38px; height: 38px; border-radius: 12px; border: 1px solid #eef3f6; background: #f8fbfd; display: grid; place-items: center; flex: 0 0 auto; font-size: 16px; color: var(--navy); }
@@ -887,6 +931,7 @@ body.page-arsip.dash-body { font-family: 'Nunito', sans-serif; font-size: 15px; 
 .dt-doc-note-title { font-size: 13px; font-weight: 800; color: #92400e; }
 .dt-doc-note-desc { font-size: 13px; color: #78350f; margin-top: 2px; }
 
+/* ─── Confirm Modal ─── */
 .cf-modal { position: fixed; inset: 0; z-index: 10000; display: none; }
 .cf-modal.is-open { display: flex; align-items: center; justify-content: center; padding: 12px; }
 .cf-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.40); backdrop-filter: blur(8px); }
@@ -907,6 +952,7 @@ body.page-arsip.dash-body { font-family: 'Nunito', sans-serif; font-size: 15px; 
 .cf-btn-danger { background: #ef4444; color: #fff; }
 .cf-btn-danger:hover { background: #dc2626; }
 
+/* ─── Toast ─── */
 .nt-wrap { position: fixed; top: 18px; right: 18px; z-index: 11000; pointer-events: none; }
 .nt-toast { width: min(380px, calc(100vw - 36px)); background: #fff; border: 1px solid #e6eef2; border-radius: 16px; box-shadow: 0 16px 32px rgba(2,8,23,.12); padding: 14px; display: flex; gap: 12px; align-items: flex-start; position: relative; overflow: hidden; pointer-events: auto; }
 .nt-success { border-left: 4px solid #22c55e; }
@@ -917,143 +963,176 @@ body.page-arsip.dash-body { font-family: 'Nunito', sans-serif; font-size: 15px; 
 .nt-bar { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: linear-gradient(90deg,#22c55e,#16a34a); animation: ntbar 4s linear forwards; }
 @keyframes ntbar { from { width: 100%; } to { width: 0%; } }
 
-.hist-overlay{
-  position:fixed;inset:0;z-index:9000;
-  display:none;
-  align-items:center;justify-content:center;
-  padding:16px;
-}
-.hist-overlay.is-open{ display:flex; }
-
-.hist-backdrop{
-  position:fixed;inset:0;
-  background:rgba(15,23,42,.38);
-  backdrop-filter:blur(10px);
-  -webkit-backdrop-filter:blur(10px);
-}
-
-.hist-panel{
-  position:relative;z-index:1;
-  width:min(1100px,96vw);
-  max-height:calc(100vh - 32px);
-  display:flex;flex-direction:column;
-  background:#fff;
-  border-radius:20px;
-  overflow:hidden;
-  box-shadow:0 24px 64px rgba(2,6,23,.22);
-  animation:histPop .2s ease;
-}
-@keyframes histPop{
-  from{opacity:0;transform:scale(.97);}
-  to{opacity:1;transform:scale(1);}
-}
-
-.hist-topbar{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:18px 20px 14px;
-  border-bottom:1px solid var(--border);
-  background:#fff;
-  position:sticky;top:0;z-index:2;
-  gap:12px;
-}
-.hist-back{
-  display:inline-flex;align-items:center;gap:6px;
-  background:none;border:none;
-  font-size:14.5px;font-weight:700;font-family:'Nunito',sans-serif;
-  color:var(--navy);cursor:pointer;padding:0;
-  transition:opacity .15s;
-}
-.hist-back:hover{opacity:.65;}
-.hist-back i{font-size:13px;}
-
-.hist-topbar-right{display:flex;align-items:center;gap:8px;}
-
-.hist-export-btn{
-  width:40px;height:40px;
-  border:1px solid var(--border);border-radius:11px;
-  background:#f8fafc;color:var(--navy);
-  display:inline-flex;align-items:center;justify-content:center;
-  cursor:pointer;font-size:19px;transition:.15s;
-}
-.hist-export-btn:hover{background:var(--navy);color:#fff;border-color:var(--navy);}
-
-.hist-body{
-  padding:20px 22px 24px;
-  overflow-y:auto;
-  overscroll-behavior:contain;
-}
-
-.hist-header{
-  display:flex;align-items:center;justify-content:space-between;
-  gap:12px;margin-bottom:16px;
-}
-.hist-title{
-  font-size:21px;font-weight:800;color:#0f172a;margin:0;
-}
-
-.hist-table-wrap{
-  border:1px solid var(--border);
-  border-radius:12px;
-  overflow:hidden;
-}
-
-.hist-tbl-head,
-.hist-tbl-row{
-  display:grid;
-  grid-template-columns:148px 170px 130px 1.5fr 2.2fr;
-  column-gap:16px;
-  padding:0 18px;
-}
-
-.hist-tbl-head{
-  background:var(--tbl-head-bg);
-  min-height:48px;
-  align-items:center;
-}
-.hist-tbl-head .hist-col{
-  color:#fff;font-size:13px;font-weight:700;letter-spacing:.3px;white-space:nowrap;
-}
-
-.hist-tbl-row{
-  border-top:1px solid var(--tbl-row-border);
-  padding-top:15px;padding-bottom:15px;
-  align-items:start;transition:background .12s;
-}
-.hist-tbl-row:hover{background:#f8fbfe;}
-
-.hist-col{
-  font-size:14px;color:#1e293b;min-width:0;overflow-wrap:anywhere;line-height:1.45;
-}
-.hist-col-waktu {font-size:13.5px;color:#374151;}
-.hist-col-akun  {font-weight:700;color:var(--navy2);}
-.hist-col-role  {color:#475569;}
-.hist-col-unit  {color:#374151;}
-.hist-col-aktivitas{color:#1e293b;}
-
-.hist-empty{
-  text-align:center;
-  padding:44px;
-  color:#94a3b8;
-  font-size:14px;
-}
-
+/* ─── Responsive ─── */
 @media (max-width: 1100px) {
-  .ap-tbl-head, .ap-tbl-row { grid-template-columns: 44px 64px 1fr 1.6fr 1fr 1.2fr 1fr 90px; column-gap: 10px; }
   .ap-filter-bar { flex-wrap: wrap; }
   .ap-filter-tools { margin-left: 0; }
   .dt-info-grid, .dt-budget-grid { grid-template-columns: repeat(2, 1fr); }
   .dt-doc-grid { grid-template-columns: 1fr; }
 }
 
-@media(max-width:900px){
-  .hist-tbl-head,.hist-tbl-row{
-    grid-template-columns:120px 140px 100px 1fr 1.6fr;
-    column-gap:10px;
-  }
+@media (max-width: 800px) {
+  .dash-sidebar { display: none; }
+  .dash-main { padding: 16px; }
 }
-
 </style>
 
+{{-- ======= HISTORI AKTIVITAS PANEL ======= --}}
+<div class="hist-overlay" id="histOverlay" aria-hidden="true">
+  <div class="hist-backdrop" id="histBackdrop"></div>
+
+  <div class="hist-panel" role="dialog" aria-modal="true" aria-labelledby="histTitle">
+
+    {{-- Sticky topbar --}}
+    <div class="hist-topbar">
+      <button type="button" class="hist-back" id="histBackBtn">
+        <i class="bi bi-chevron-left"></i> Kembali
+      </button>
+      <div class="hist-topbar-right">
+        <button type="button" class="hist-export-btn" id="histExportBtn" title="Export Histori ke Excel">
+          <i class="bi bi-clipboard2-pulse"></i>
+        </button>
+      </div>
+    </div>
+
+    {{-- Scrollable body --}}
+    <div class="hist-body">
+      <div class="hist-header">
+        <h2 class="hist-title" id="histTitle">Histori Aktivitas</h2>
+      </div>
+
+      <div class="hist-table-wrap">
+        <div class="hist-tbl-head">
+          <div class="hist-col">Waktu</div>
+          <div class="hist-col">Nama Akun</div>
+          <div class="hist-col">Role</div>
+          <div class="hist-col">Unit Kerja</div>
+          <div class="hist-col">Aktivitas</div>
+        </div>
+        <div id="histTableBody">
+          <div class="hist-loading" id="histLoading">
+            <div class="hist-spinner"></div>
+            <span>Memuat data...</span>
+          </div>
+          <div class="hist-empty" id="histEmpty" hidden>Tidak ada histori aktivitas.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+/* ─── Histori Modal ─── */
+.hist-overlay {
+  position: fixed; inset: 0; z-index: 9000;
+  display: none;
+  align-items: center; justify-content: center;
+  padding: 16px;
+}
+.hist-overlay.is-open { display: flex; }
+
+.hist-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(15,23,42,.38);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.hist-panel {
+  position: relative; z-index: 1;
+  width: min(1100px, 96vw);
+  max-height: calc(100vh - 32px);
+  display: flex; flex-direction: column;
+  background: #fff;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(2,6,23,.22);
+  animation: histPop .2s ease;
+}
+@keyframes histPop { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: scale(1); } }
+
+.hist-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  background: #fff;
+  position: sticky; top: 0; z-index: 2;
+  gap: 12px;
+}
+.hist-back {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: none; border: none;
+  font-size: 14.5px; font-weight: 700; font-family: 'Nunito', sans-serif;
+  color: var(--navy); cursor: pointer; padding: 0;
+  transition: opacity .15s;
+}
+.hist-back:hover { opacity: .65; }
+.hist-back i { font-size: 13px; }
+
+.hist-topbar-right { display: flex; align-items: center; gap: 8px; }
+
+.hist-export-btn {
+  width: 40px; height: 40px;
+  border: 1px solid var(--border); border-radius: 11px;
+  background: #f8fafc; color: var(--navy);
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 19px; transition: .15s;
+}
+.hist-export-btn:hover { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+.hist-body {
+  padding: 20px 22px 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.hist-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.hist-title { font-size: 21px; font-weight: 800; color: #0f172a; margin: 0; }
+
+.hist-table-wrap { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+
+.hist-tbl-head,
+.hist-tbl-row {
+  display: grid;
+  grid-template-columns: 148px 170px 130px 1.5fr 2.2fr;
+  column-gap: 16px;
+  padding: 0 18px;
+}
+
+.hist-tbl-head {
+  background: var(--tbl-head-bg);
+  min-height: 48px; align-items: center;
+}
+.hist-tbl-head .hist-col {
+  color: #fff; font-size: 13px; font-weight: 700; letter-spacing: .3px; white-space: nowrap;
+}
+
+.hist-tbl-row {
+  border-top: 1px solid var(--tbl-row-border);
+  padding-top: 15px; padding-bottom: 15px;
+  align-items: start; transition: background .12s;
+}
+.hist-tbl-row:hover { background: #f8fbfe; }
+
+.hist-col { font-size: 14px; color: #1e293b; min-width: 0; overflow-wrap: anywhere; line-height: 1.45; }
+.hist-col-waktu  { font-size: 13.5px; color: #374151; }
+.hist-col-akun   { font-weight: 700; color: var(--navy2); }
+.hist-col-role   { color: #475569; }
+.hist-col-unit   { color: #374151; }
+.hist-col-aktivitas { color: #1e293b; }
+
+.hist-loading { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 44px; color: #64748b; font-size: 14px; }
+.hist-spinner { width: 20px; height: 20px; border: 2px solid #e2e8f0; border-top-color: var(--navy); border-radius: 50%; animation: hspin .7s linear infinite; }
+@keyframes hspin { to { transform: rotate(360deg); } }
+.hist-empty { text-align: center; padding: 44px; color: #94a3b8; font-size: 14px; }
+
+@media (max-width: 900px) {
+  .hist-tbl-head, .hist-tbl-row { grid-template-columns: 120px 140px 100px 1fr 1.6fr; column-gap: 10px; }
+}
+</style>
+
+{{-- ======= SCRIPTS ======= --}}
 <script>
 document.addEventListener('DOMContentLoaded', function(){
   const searchInput  = document.getElementById('apSearchInput');
@@ -1088,6 +1167,7 @@ document.addEventListener('DOMContentLoaded', function(){
   const cfMeta       = document.getElementById('cfMeta');
   const cfCount      = document.getElementById('cfCount');
 
+  /* ── Filter / Navigation ── */
   function applyServerFilter(){
     const url = new URL(window.location.href);
     const q      = searchInput?.value?.trim() || '';
@@ -1099,44 +1179,31 @@ document.addEventListener('DOMContentLoaded', function(){
     if(unit   !== 'Semua') url.searchParams.set('unit', unit);     else url.searchParams.delete('unit');
     if(status !== 'Semua') url.searchParams.set('status', status); else url.searchParams.delete('status');
     if(tahun  !== 'Semua') url.searchParams.set('tahun', tahun);   else url.searchParams.delete('tahun');
-
     url.searchParams.delete('page');
     window.location.href = url.toString();
   }
 
-  searchInput?.addEventListener('keydown', e => {
-    if(e.key === 'Enter'){
-      e.preventDefault();
-      applyServerFilter();
-    }
-  });
-
+  searchInput?.addEventListener('keydown', e => { if(e.key==='Enter'){ e.preventDefault(); applyServerFilter(); }});
   unitFilter?.addEventListener('change', applyServerFilter);
   statusFilter?.addEventListener('change', applyServerFilter);
   yearFilter?.addEventListener('change', applyServerFilter);
+  refreshBtn?.addEventListener('click', () => { const u=new URL(window.location.href); u.search=''; window.location.href=u.toString(); });
 
-  refreshBtn?.addEventListener('click', () => {
-    const u = new URL(window.location.href);
-    u.search = '';
-    window.location.href = u.toString();
-  });
-
+  /* ── Sort nilai ── */
   document.getElementById('sortNilaiBtn')?.addEventListener('click', function(){
     const url = new URL(window.location.href);
     const cur = url.searchParams.get('sort_nilai');
-
-    if(cur === 'asc') url.searchParams.set('sort_nilai','desc');
-    else if(cur === 'desc') url.searchParams.delete('sort_nilai');
+    if(cur==='asc') url.searchParams.set('sort_nilai','desc');
+    else if(cur==='desc') url.searchParams.delete('sort_nilai');
     else url.searchParams.set('sort_nilai','asc');
-
     url.searchParams.delete('page');
     window.location.href = url.toString();
   });
 
+  /* ── Select All ── */
   function syncSelectAll(){
     const checks = Array.from(document.querySelectorAll('.ap-row-check'));
-    const cnt = checks.filter(c => c.checked).length;
-
+    const cnt = checks.filter(c=>c.checked).length;
     if(!selectAll) return;
     selectAll.checked = checks.length > 0 && cnt === checks.length;
     selectAll.indeterminate = cnt > 0 && cnt < checks.length;
@@ -1144,13 +1211,13 @@ document.addEventListener('DOMContentLoaded', function(){
 
   document.addEventListener('change', function(e){
     if(e.target?.classList?.contains('ap-row-check')) syncSelectAll();
-
     if(e.target?.id === 'apSelectAll'){
       document.querySelectorAll('.ap-row-check').forEach(cb => cb.checked = selectAll.checked);
       selectAll.indeterminate = false;
     }
   });
 
+  /* ── Detail Modal ── */
   function normalizeStorageUrl(path){
     if(!path) return '#';
     let s = String(path).trim().replace(/\\/g, '/');
@@ -1174,7 +1241,6 @@ document.addEventListener('DOMContentLoaded', function(){
     dtDocList.innerHTML = '';
     const docs = data.docs || {};
     let total = 0;
-
     Object.keys(docs).forEach(grp => {
       const arr = Array.isArray(docs[grp]) ? docs[grp] : [];
       arr.forEach(doc => {
@@ -1198,16 +1264,13 @@ document.addEventListener('DOMContentLoaded', function(){
             <div class="dt-doc-title">${grp || 'Dokumen'}</div>
             <div class="dt-doc-sub">${fileName}</div>
           </div>
-          <a class="dt-doc-act" href="${fileUrl}" target="_blank" rel="noopener">
-            <i class="bi bi-eye"></i>
-          </a>
+          <a class="dt-doc-act" href="${fileUrl}" target="_blank" rel="noopener"><i class="bi bi-eye"></i></a>
         `;
         dtDocList.appendChild(card);
       });
     });
-
     dtDocEmpty.hidden = total > 0;
-    const note = (data.docnote || '').trim();
+    const note = (data.docnote||'').trim();
     dtDocNoteWrap.hidden = !note;
     if(note) dtDocNote.textContent = note;
 
@@ -1226,40 +1289,31 @@ document.addEventListener('DOMContentLoaded', function(){
     btn.addEventListener('click', function(e){
       e.preventDefault();
       let docs = {};
-      try { docs = JSON.parse(btn.getAttribute('data-docs') || '{}'); } catch(_){}
-
+      try { docs = JSON.parse(btn.getAttribute('data-docs')||'{}'); } catch(_){}
       openDetail({
-        title:   btn.dataset.title,
-        unit:    btn.dataset.unit,
-        tahun:   btn.dataset.tahun,
-        idrup:   btn.dataset.idrup,
-        status:  btn.dataset.status,
-        rekanan: btn.dataset.rekanan,
-        jenis:   btn.dataset.jenis,
-        pagu:    btn.dataset.pagu,
-        hps:     btn.dataset.hps,
-        kontrak: btn.dataset.kontrak,
-        docnote: btn.dataset.docnote,
-        docs
+        title:   btn.dataset.title,   unit:    btn.dataset.unit,
+        tahun:   btn.dataset.tahun,   idrup:   btn.dataset.idrup,
+        status:  btn.dataset.status,  rekanan: btn.dataset.rekanan,
+        jenis:   btn.dataset.jenis,   pagu:    btn.dataset.pagu,
+        hps:     btn.dataset.hps,     kontrak: btn.dataset.kontrak,
+        docnote: btn.dataset.docnote, docs
       });
     });
   });
 
   dtCloseBtn?.addEventListener('click', closeDetail);
-  dtModal?.addEventListener('click', e => {
-    if(e.target?.dataset?.close === 'true') closeDetail();
-  });
+  dtModal?.addEventListener('click', e => { if(e.target?.dataset?.close==='true') closeDetail(); });
 
+  /* ── Delete Modal ── */
   let pendingIds = [];
 
   function openConfirm(ids){
     pendingIds = ids.slice();
     if(cfCount) cfCount.textContent = String(ids.length);
-    if(cfMeta) cfMeta.hidden = ids.length === 0;
+    if(cfMeta)  cfMeta.hidden = ids.length===0;
     cfModal.classList.add('is-open');
     cfModal.setAttribute('aria-hidden','false');
   }
-
   function closeConfirm(){
     cfModal.classList.remove('is-open');
     cfModal.setAttribute('aria-hidden','true');
@@ -1276,8 +1330,7 @@ document.addEventListener('DOMContentLoaded', function(){
         'X-Requested-With': 'XMLHttpRequest'
       }
     });
-
-    if(!res.ok) throw new Error('Gagal menghapus arsip ID ' + id);
+    if(!res.ok) throw new Error('Gagal menghapus arsip ID '+id);
   }
 
   async function runDelete(ids){
@@ -1295,124 +1348,80 @@ document.addEventListener('DOMContentLoaded', function(){
 
   cfCancelBtn?.addEventListener('click', closeConfirm);
   cfCloseBtn?.addEventListener('click', closeConfirm);
-  cfModal?.addEventListener('click', e => {
-    if(e.target?.dataset?.close === 'true') closeConfirm();
-  });
-
+  cfModal?.addEventListener('click', e => { if(e.target?.dataset?.close==='true') closeConfirm(); });
   cfConfirmBtn?.addEventListener('click', async () => {
     const ids = pendingIds.slice();
-    if(ids.length === 0) return;
+    if(ids.length===0) return;
     await runDelete(ids);
   });
 
+  /* ── Export Excel ── */
   const lastPage = @json($arsips->lastPage());
 
   async function fetchRowsFromPage(page){
     const url = new URL(window.location.href);
     url.searchParams.set('page', page);
-
-    const text = await fetch(url.toString()).then(r => r.text());
+    const text = await fetch(url.toString()).then(r=>r.text());
     const parser = new DOMParser();
     const doc = parser.parseFromString(text, 'text/html');
-
     return Array.from(doc.querySelectorAll('.ap-tbl-row')).map(row => {
       const btn = row.querySelector('.js-open-detail');
       return {
-        "Nama Pekerjaan"            : row.querySelector('.ap-col-job')?.textContent?.trim() || '-',
-        "Unit Kerja"                : row.querySelector('.ap-col-unit')?.textContent?.trim() || '-',
-        "Tahun Anggaran"            : row.querySelector('.ap-col-tahun')?.textContent?.trim() || '-',
-        "Metode PBJ"                : row.querySelector('.metode-badge')?.textContent?.trim() || '-',
-        "ID RUP"                    : btn?.dataset?.idrup || '-',
-        "Status Pekerjaan"          : btn?.dataset?.status || '-',
-        "Nama Rekanan"              : btn?.dataset?.rekanan || '-',
-        "Jenis Pengadaan"           : btn?.dataset?.jenis || '-',
-        "Pagu Anggaran"             : btn?.dataset?.pagu || '-',
-        "HPs"                       : btn?.dataset?.hps || '-',
-        "Nilai Kontrak"             : btn?.dataset?.kontrak || '-',
-        "Dok. Tidak Dipersyaratkan" : btn?.dataset?.docnote || '-',
+        "Nama Pekerjaan"            : row.querySelector('.ap-col-job')?.textContent?.trim()||'-',
+        "Unit Kerja"                : row.querySelector('.ap-col-unit')?.textContent?.trim()||'-',
+        "Tahun Anggaran"            : row.querySelector('.ap-col-tahun')?.textContent?.trim()||'-',
+        "Metode PBJ"                : row.querySelector('.metode-badge')?.textContent?.trim()||'-',
+        "ID RUP"                    : btn?.dataset?.idrup||'-',
+        "Status Pekerjaan"          : btn?.dataset?.status||'-',
+        "Nama Rekanan"              : btn?.dataset?.rekanan||'-',
+        "Jenis Pengadaan"           : btn?.dataset?.jenis||'-',
+        "Pagu Anggaran"             : btn?.dataset?.pagu||'-',
+        "HPs"                       : btn?.dataset?.hps||'-',
+        "Nilai Kontrak"             : btn?.dataset?.kontrak||'-',
+        "Dok. Tidak Dipersyaratkan" : btn?.dataset?.docnote||'-',
       };
     });
   }
 
   async function exportToExcel(){
-    if(typeof XLSX === 'undefined'){
-      alert('Library Excel belum termuat.');
-      return;
-    }
-
+    if(typeof XLSX === 'undefined'){ alert('Library Excel belum termuat.'); return; }
     let all = [];
-    for(let p = 1; p <= (Number(lastPage) || 1); p++){
+    for(let p=1; p<=(Number(lastPage)||1); p++){
       all = all.concat(await fetchRowsFromPage(p));
     }
-
-    if(all.length === 0){
-      alert('Tidak ada data untuk diexport.');
-      return;
-    }
+    if(all.length===0){ alert('Tidak ada data untuk diexport.'); return; }
 
     const ws = XLSX.utils.json_to_sheet(all);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Arsip PBJ');
-
     const now = new Date();
     const pad = n => String(n).padStart(2,'0');
     const stamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
-
     XLSX.writeFile(wb, `Arsip_PBJ_${stamp}.xlsx`);
   }
 
   printBtn?.addEventListener('click', async function(){
-    try {
-      printBtn.disabled = true;
-      await exportToExcel();
-    } catch(err){
-      alert(err?.message || 'Export gagal.');
-    } finally {
-      printBtn.disabled = false;
-    }
+    try { printBtn.disabled=true; await exportToExcel(); }
+    catch(err){ alert(err?.message||'Export gagal.'); }
+    finally { printBtn.disabled=false; }
   });
 
+  /* ── Histori Aktivitas ── */
   const histOverlay   = document.getElementById('histOverlay');
   const histBackBtn   = document.getElementById('histBackBtn');
   const histTableBody = document.getElementById('histTableBody');
+  const histLoading   = document.getElementById('histLoading');
   const histEmpty     = document.getElementById('histEmpty');
   const histExportBtn = document.getElementById('histExportBtn');
-  const historyBtn    = document.getElementById('apHistoryBtn');
 
-  let histData = [
-    {
-      waktu: '23-05-2025 09:14:22',
-      nama_akun: 'PPK Teknik',
-      role: 'PPK',
-      unit_kerja: 'Fakultas Teknik',
-      aktivitas: 'Mengedit arsip PBJ Paket Renovasi Gedung A'
-    },
-    {
-      waktu: '23-05-2025 10:42:11',
-      nama_akun: 'PPK Teknik',
-      role: 'PPK',
-      unit_kerja: 'Fakultas Teknik',
-      aktivitas: 'Menghapus arsip PBJ Paket Pengadaan Meubel'
-    },
-    {
-      waktu: '23-05-2025 13:08:45',
-      nama_akun: 'PPK Teknik',
-      role: 'PPK',
-      unit_kerja: 'Fakultas Teknik',
-      aktivitas: 'Menambahkan data pengadaan baru'
-    }
-  ];
+  const calendarBtn = document.querySelectorAll('.ap-tool-btn')[1];
+
+  let histData = [];
 
   function renderHistoriRows(data){
     histTableBody.querySelectorAll('.hist-tbl-row').forEach(el => el.remove());
-
-    if(data.length === 0){
-      histEmpty.hidden = false;
-      return;
-    }
-
+    if(data.length === 0){ histEmpty.hidden = false; return; }
     histEmpty.hidden = true;
-
     data.forEach(item => {
       const row = document.createElement('div');
       row.className = 'hist-tbl-row';
@@ -1427,20 +1436,42 @@ document.addEventListener('DOMContentLoaded', function(){
     });
   }
 
+  async function loadHistori(){
+    histLoading.hidden = false;
+    histEmpty.hidden   = true;
+    histTableBody.querySelectorAll('.hist-tbl-row').forEach(el => el.remove());
+    try {
+      const res  = await fetch('/super-admin/histori', {
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        }
+      });
+      if(!res.ok) throw new Error('Gagal memuat histori');
+      const json = await res.json();
+      histData   = Array.isArray(json.data) ? json.data : (Array.isArray(json) ? json : []);
+    } catch(err) {
+      histData = [];
+      console.warn('Histori endpoint belum tersedia:', err.message);
+    }
+    histLoading.hidden = true;
+    renderHistoriRows(histData);
+  }
+
   function openHistori(){
     histOverlay.classList.add('is-open');
     histOverlay.setAttribute('aria-hidden','false');
     document.body.style.overflow = 'hidden';
-    renderHistoriRows(histData);
+    loadHistori();
   }
-
   function closeHistori(){
     histOverlay.classList.remove('is-open');
     histOverlay.setAttribute('aria-hidden','true');
     document.body.style.overflow = '';
   }
 
-  historyBtn?.addEventListener('click', openHistori);
+  calendarBtn?.addEventListener('click', openHistori);
   histBackBtn?.addEventListener('click', closeHistori);
   document.getElementById('histBackdrop')?.addEventListener('click', closeHistori);
 
@@ -1449,29 +1480,23 @@ document.addEventListener('DOMContentLoaded', function(){
       alert('Tidak ada data histori untuk diexport.');
       return;
     }
-
     const ws = XLSX.utils.json_to_sheet(histData.map(d => ({
-      'Waktu'      : d.waktu || '-',
-      'Nama Akun'  : d.nama_akun || '-',
-      'Role'       : d.role || '-',
+      'Waktu'      : d.waktu      || '-',
+      'Nama Akun'  : d.nama_akun  || '-',
+      'Role'       : d.role       || '-',
       'Unit Kerja' : d.unit_kerja || '-',
-      'Aktivitas'  : d.aktivitas || '-',
+      'Aktivitas'  : d.aktivitas  || '-',
     })));
-
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Histori Aktivitas');
-
     const now = new Date();
-    const pad = n => String(n).padStart(2, '0');
-    XLSX.writeFile(
-      wb,
-      `Histori_Aktivitas_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}.xlsx`
-    );
+    const pad = n => String(n).padStart(2,'0');
+    XLSX.writeFile(wb, `Histori_Aktivitas_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}.xlsx`);
   });
 
+  /* ── Toast auto-close ── */
   const ntToast = document.getElementById('ntToast');
   const ntClose = document.getElementById('ntCloseBtn');
-
   if(ntToast){
     const close = () => ntToast.parentElement?.remove();
     ntClose?.addEventListener('click', close);
@@ -1479,61 +1504,46 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 });
 
-/* Disable / enable edit & delete */
+/* ── Aksi Button Control ── */
 function updateAksiState() {
   document.querySelectorAll('.ap-tbl-row').forEach(row => {
-    const checkbox = row.querySelector('.ap-row-check');
-
-    const editBtn = row.querySelector('.aksi-edit');
+    const checkbox  = row.querySelector('.ap-row-check');
+    const editBtn   = row.querySelector('.aksi-edit');
     const deleteBtn = row.querySelector('.aksi-delete');
 
-    if (!checkbox.checked) {
-      [editBtn, deleteBtn].forEach(btn => {
-        if (!btn) return;
+    [editBtn, deleteBtn].forEach(btn => {
+      if (!btn) return;
+      if (!checkbox.checked) {
         btn.classList.add('disabled-aksi');
         btn.style.pointerEvents = 'none';
         btn.style.opacity = '0.5';
-      });
-    } else {
-      [editBtn, deleteBtn].forEach(btn => {
-        if (!btn) return;
+      } else {
         btn.classList.remove('disabled-aksi');
         btn.style.pointerEvents = 'auto';
         btn.style.opacity = '1';
-      });
-    }
+      }
+    });
   });
 }
 
-/* Highlight row kalau dicentang */
 function highlightRow() {
   document.querySelectorAll('.ap-tbl-row').forEach(row => {
     const checkbox = row.querySelector('.ap-row-check');
-    if (checkbox.checked) {
-      row.style.background = '#f0f9ff';
-    } else {
-      row.style.background = '';
-    }
+    row.style.background = checkbox.checked ? '#f0f9ff' : '';
   });
 }
 
-/* Event checkbox */
 document.addEventListener('change', function(e) {
-  if (
-    e.target.classList.contains('ap-row-check') ||
-    e.target.id === 'apSelectAll'
-  ) {
+  if (e.target.classList.contains('ap-row-check') || e.target.id === 'apSelectAll') {
     updateAksiState();
     highlightRow();
   }
 });
 
-/* Block klik edit & delete kalau belum checklist */
 document.querySelectorAll('.aksi-edit, .aksi-delete').forEach(btn => {
   btn.addEventListener('click', function(e) {
     const row = btn.closest('.ap-tbl-row');
     const checkbox = row.querySelector('.ap-row-check');
-
     if (!checkbox.checked) {
       e.preventDefault();
       alert('Centang data dulu sebelum edit atau hapus!');
@@ -1541,11 +1551,9 @@ document.querySelectorAll('.aksi-edit, .aksi-delete').forEach(btn => {
   });
 });
 
-/* INIT pertama kali */
 updateAksiState();
 highlightRow();
 </script>
-
 
 </body>
 </html>

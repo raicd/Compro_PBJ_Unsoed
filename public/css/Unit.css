@@ -1543,3 +1543,77 @@ html, body{
 body.modal-open .dash-wrap{
   overflow: hidden !important;
 }
+
+/* ================= HEADER GLOBAL FINAL ================= */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+/* LEFT */
+.app-header-left h1 {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 600; /* ikut rule kamu (semi-bold) */
+    color: var(--navy2);
+}
+
+.app-header-left p {
+    margin: 4px 0 0;
+    font-size: 14px;
+    color: var(--muted);
+    font-weight: 400;
+}
+
+/* RIGHT */
+.app-header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* BUTTON (SAMA PERSIS STYLE LAMA) */
+.btn-primary-header {
+    height: 44px;
+    padding: 0 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,.08);
+    background: var(--yellow);
+    color: #1b1b1b;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: 'Nunito', sans-serif;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: .15s ease;
+    white-space: nowrap;
+    box-shadow: 0 4px 14px rgba(246,193,0,.30);
+    letter-spacing: .4px;
+}
+
+.btn-primary-header:hover {
+    background: #d9aa00;
+    transform: translateY(-1px);
+}
+
+.btn-primary-header:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+    .app-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .app-header-right {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}

@@ -339,8 +339,23 @@
 
   body.is-modal-open{ overflow:hidden !important; }
 
-  .dash-header h1{ font-weight:600 !important; }
-  .dash-header p{ font-weight:400 !important; }
+  .dash-header{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:6px;
+}
+
+.dash-header h1{
+  margin:0;
+  font-weight:700;
+  color:#184f61;
+}
+
+.dash-header p{
+  margin:0;
+  color:#64748b;
+}
 
   .u-label,.u-value,.u-money,.u-sub,.u-chart-title,.u-select select{ font-weight:400 !important; }
 

@@ -42,7 +42,7 @@
       .map(id => document.getElementById(id))
       .filter(Boolean);
 
-    if (elements.length === 0) return;
+    if (elements.length < 2) return;
 
     const getHashFromHref = (a) => {
       const href = a.getAttribute('href') || '';

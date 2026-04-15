@@ -46,7 +46,6 @@
             type="email"
             id="email"
             name="email"
-            placeholder="esteban.schiller@gmail.com"
             autocomplete="email"
             value="{{ old('email') }}"
             required
@@ -63,7 +62,6 @@
             type="password"
             id="password"
             name="password"
-            placeholder="••••••••"
             autocomplete="current-password"
             required
           >

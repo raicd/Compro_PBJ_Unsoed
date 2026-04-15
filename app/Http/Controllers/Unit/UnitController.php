@@ -663,13 +663,31 @@ class UnitController extends Controller
         $pengadaan->dokumen_tidak_dipersyaratkan = $this->normalizeArray($pengadaan->dokumen_tidak_dipersyaratkan);
         $dokumenExisting = $this->buildDokumenList($pengadaan);
 
+                $jenisPengadaanOptions = [
+            "Pengadaan Barang",
+            "Pengadaan Pekerjaan Konstruksi",
+            "Pengadaan Jasa Konsultasi",
+            "Pengadaan Jasa Lainnya",
+        ];
+
+        $metodePengadaanOptions = [
+            "Pengadaan Langsung",
+            "Penunjukan Langsung",
+            "E-Purchasing / E-Catalogue",
+            "Tender Terbatas",
+            "Tender Terbuka",
+            "Swakelola",
+        ];
+
         return view('Unit.EditArsip', compact(
             'unitName',
             'pengadaan',
             'units',
             'selectedUnitId',
             'selectedUnitName',
-            'dokumenExisting'
+            'dokumenExisting',
+            'jenisPengadaanOptions',
+            'metodePengadaanOptions',
         ));
     }
 
@@ -805,11 +823,29 @@ class UnitController extends Controller
 
         $units = Unit::orderBy('nama')->get();
 
+        $jenisPengadaanOptions = [
+    "Pengadaan Barang",
+    "Pengadaan Pekerjaan Konstruksi",
+    "Pengadaan Jasa Konsultasi",
+    "Pengadaan Jasa Lainnya",
+];
+
+$metodePengadaanOptions = [
+    "Pengadaan Langsung",
+    "Penunjukan Langsung",
+    "E-Purchasing / E-Catalogue",
+    "Tender Terbatas",
+    "Tender Terbuka",
+    "Swakelola",
+];
+
         return view('Unit.TambahPengadaan', compact(
             'unitName',
             'units',
             'selectedUnitId',
-            'selectedUnitName'
+            'selectedUnitName',
+            'jenisPengadaanOptions',
+            'metodePengadaanOptions',
         ));
     }
 

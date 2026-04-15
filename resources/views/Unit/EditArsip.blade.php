@@ -42,14 +42,12 @@
   $tahunOptions = $tahunOptions ?? [2022, 2023, 2024, 2025, 2026];
 
   // ✅ options yang konsisten dengan dashboard/UnitController (metode pengadaan)
-  $jenisPengadaanOptions = $jenisPengadaanOptions ?? [
-    "Pengadaan Langsung",
-    "Penunjukan Langsung",
-    "E-Purchasing / E-Catalog",
-    "Tender Terbatas",
-    "Tender Terbuka",
-    "Swakelola",
-  ];
+  $jenisPengadaanOptions = [
+  "Pengadaan Barang",
+  "Pengadaan Pekerjaan Konstruksi",
+  "Pengadaan Jasa Konsultasi",
+  "Pengadaan Jasa Lainnya",
+];
   $statusPekerjaanOptions = $statusPekerjaanOptions ?? ["Perencanaan", "Pemilihan", "Pelaksanaan", "Selesai"];
 
   // getter aman (obj/array)
@@ -311,7 +309,7 @@
                        placeholder="RUP-xxxx-xxxx-xxx-xx" />
               </div>
 
-              <div class="tp-field">
+            <div class="tp-field">
                 <label class="tp-label">Jenis Pengadaan</label>
                 <div class="tp-control">
                   <select name="jenis_pengadaan" class="tp-select" required>
@@ -324,7 +322,24 @@
                 </div>
               </div>
 
-              <div class="tp-field tp-full">
+              <div class="tp-field">
+  <label class="tp-label">Metode Pengadaan</label>
+  <div class="tp-control">
+    <select name="metode_pengadaan" class="tp-select" required>
+      <option value="" disabled hidden>Pilih Metode Pengadaan</option>
+
+      @foreach($metodePengadaanOptions as $mp)
+        <option value="{{ $mp }}" {{ $val('metode_pengadaan',['metode_pengadaan']) == $mp ? 'selected' : '' }}>
+          {{ $mp }}
+        </option>
+      @endforeach
+
+    </select>
+    <i class="bi bi-chevron-down tp-icon"></i>
+  </div>
+</div>
+
+              <div class="tp-field">
                 <label class="tp-label">Status Pekerjaan</label>
                 <div class="tp-control">
                   <select name="status_pekerjaan" class="tp-select" required>
@@ -573,7 +588,28 @@
     font-weight: 400;
   }
   .dash-app{ font-weight: 600 !important; }
-  .dash-header h1{ font-weight: 600 !important; }
+  .dash-header{
+  margin-bottom:18px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start; /* 🔥 ini kuncinya */
+  text-align:left;        /* 🔥 paksa ke kiri */
+  gap:6px;
+}
+
+.dash-header h1{
+  margin:0;
+  font-size:34px;
+  font-weight:700;
+  color:#184f61;
+}
+
+.dash-header p{
+  margin:0;
+  font-size:15px;
+  color:#184f61;
+  opacity:0.85;
+}
 
   .dash-role,
   .dash-unit-label,

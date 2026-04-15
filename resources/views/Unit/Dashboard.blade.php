@@ -138,7 +138,7 @@
             <div class="u-mini-select">
               <select id="fTahunPaket">
                 {{-- ✅ DEFAULT: Semua Tahun --}}
-                <option value="" selected>Semua Tahun</option>
+                <option value="" selected>Tahun</option>
                 @foreach($tahunOptions as $t)
                   <option value="{{ $t }}">{{ $t }}</option>
                 @endforeach
@@ -164,7 +164,7 @@
             <div class="u-mini-select">
               <select id="fTahunNilai">
                 {{-- ✅ DEFAULT: Semua Tahun --}}
-                <option value="" selected>Semua Tahun</option>
+                <option value="" selected> Tahun</option>
                 @foreach($tahunOptions as $t)
                   <option value="{{ $t }}">{{ $t }}</option>
                 @endforeach
@@ -298,8 +298,28 @@
 
   
 
-  .dash-header h1{ font-weight: 600 !important; }
-  .dash-header p{ font-weight: 400 !important; }
+  .dash-header{
+  margin-bottom:18px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start; /* 🔥 ini kuncinya */
+  text-align:left;        /* 🔥 paksa ke kiri */
+  gap:6px;
+}
+
+.dash-header h1{
+  margin:0;
+  font-size:34px;
+  font-weight:600;
+  color:#184f61;
+}
+
+.dash-header p{
+  margin:0;
+  font-size:15px;
+  color:#184f61;
+  opacity:0.85;
+}
   .u-label, .u-value, .u-money, .u-sub, .u-chart-title, .u-select select{ font-weight: 400 !important; }
   .u-card{ position: relative; }
   .u-card-filter{ position: absolute; right: 12px; bottom: 10px; }

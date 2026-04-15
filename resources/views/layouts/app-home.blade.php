@@ -55,6 +55,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const targets = Array.from(document.querySelectorAll('[id]'))
     .filter(el => ['regulasi','kontak','statistika','arsip'].includes(el.id));
 
+  if (targets.length < 2) return;
+
   const setActiveById = (id) => {
     links.forEach(a => a.classList.remove('active'));
     const match = links.find(a => (a.getAttribute('href') || '').includes('#' + id));

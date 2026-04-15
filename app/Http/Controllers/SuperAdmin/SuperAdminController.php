@@ -1,9 +1,10 @@
 <?php
 
-namespace App\Http\Controllers\PPK;
+namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Pengadaan;
+use App\Models\User;
 use App\Models\Unit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,11 +15,11 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
-class PpkController extends Controller
+class SuperAdminController extends Controller
 {
     public function dashboard()
     {
-        $ppkName = auth()->user()->name ?? 'PPK Utama';
+        $superAdminName = auth()->user()->name ?? 'Super Admin';
 
         $tahunOptions = Pengadaan::whereNotNull('tahun')
             ->select('tahun')
@@ -30,49 +31,52 @@ class PpkController extends Controller
             ->all();
 
         if (count($tahunOptions) === 0) {
-            $y = (int)date('Y');
+            $y = (int) date('Y');
             $tahunOptions = [$y, $y - 1, $y - 2, $y - 3, $y - 4];
         }
 
-        $defaultYear = $tahunOptions[0] ?? (int)date('Y');
+        $defaultYear = $tahunOptions[0] ?? (int) date('Y');
 
-        // ✅ kolom nama unit fleksibel
         $unitNameCol = Schema::hasColumn('units', 'nama') ? 'nama'
             : (Schema::hasColumn('units', 'nama_unit') ? 'nama_unit'
                 : (Schema::hasColumn('units', 'name') ? 'name' : 'id'));
 
-        // ✅ Dropdown Unit = dari tabel units (id + nama)
         $units = Unit::orderBy($unitNameCol, 'asc')->get(['id', $unitNameCol]);
 
         $registeredUnits = $units->pluck($unitNameCol)->values()->all();
 
         $unitOptions = $units->map(function ($u) use ($unitNameCol) {
             return [
-                'id' => (int)$u->id,
-                'name' => (string)$u->{$unitNameCol},
+                'id' => (int) $u->id,
+                'name' => (string) $u->{$unitNameCol},
             ];
         })->values()->all();
 
         $totalUnitKerja = count($unitOptions);
 
+        $totalPpk = DB::table('users')
+            ->whereRaw('LOWER(role) = ?', ['ppk'])
+            ->count();
+
         $totalArsip = Pengadaan::count();
         $publik     = Pengadaan::where('status_arsip', 'Publik')->count();
         $privat     = Pengadaan::where('status_arsip', 'Privat')->count();
 
-        // ✅ Default kartu mengikuti "Semua Tahun" + "Semua Unit"
         $paketAll = Pengadaan::count();
         $nilaiAll = (int) Pengadaan::sum('nilai_kontrak');
 
         $summary = [
             ["label" => "Total Arsip", "value" => $totalArsip, "accent" => "navy", "icon" => "bi-file-earmark-text"],
-            ["label" => "Arsip Publik", "value" => $publik, "accent" => "yellow", "icon" => "bi-eye"],
+            ["label" => "Arsip Publik", "value" => $publik, "accent" => "green", "icon" => "bi-eye"],
             ["label" => "Arsip Private", "value" => $privat, "accent" => "gray", "icon" => "bi-eye-slash"],
-            ["label" => "Total Arsip Pengadaan", "value" => $paketAll, "accent" => "navy", "icon" => "bi-file-earmark-text", "sub" => "Paket Pengadaan Barang dan Jasa"],
+            ["label" => "Total PPK", "value" => $totalPpk, "accent" => "green", "icon" => "bi-building"],
+            ["label" => "Total Unit Kerja", "value" => $totalUnitKerja, "accent" => "yellow", "icon" => "bi-buildings"],
+            ["label" => "Total Paket Pengadaan", "value" => $paketAll, "accent" => "navy", "icon" => "bi-file-earmark-text", "sub" => "Paket Pengadaan Barang dan Jasa"],
             ["label" => "Total Nilai Pengadaan", "value" => $this->formatRupiahNumber($nilaiAll), "accent" => "yellow", "icon" => "bi-buildings", "sub" => "Nilai Kontrak Pengadaan"],
         ];
 
         $statusLabels = ["Perencanaan", "Pemilihan", "Pelaksanaan", "Selesai"];
-        $statusValues = $this->countByStatusPekerjaanPPK(null, null, $statusLabels);
+        $statusValues = $this->countByStatusPekerjaan(null, null, $statusLabels);
 
         $barLabels = [
             "Pengadaan\nLangsung",
@@ -82,10 +86,10 @@ class PpkController extends Controller
             "Tender\nTerbuka",
             "Swakelola"
         ];
-        $barValues = $this->countByMetodePengadaanPPK(null, null, $barLabels);
+        $barValues = $this->countByMetodePengadaan(null, null, $barLabels);
 
-        return view('PPK.Dashboard', compact(
-            'ppkName',
+        return view('SuperAdmin.Dashboard', compact(
+            'superAdminName',
             'summary',
             'tahunOptions',
             'unitOptions',
@@ -102,13 +106,11 @@ class PpkController extends Controller
     public function dashboardStats(Request $request)
     {
         $tahun = $request->query('tahun');
-        $tahun = ($tahun === null || $tahun === '') ? null : (int)$tahun;
+        $tahun = ($tahun === null || $tahun === '') ? null : (int) $tahun;
 
-        // ✅ prefer unit_id
         $unitId = $request->query('unit_id');
-        $unitId = ($unitId === null || $unitId === '') ? null : (int)$unitId;
+        $unitId = ($unitId === null || $unitId === '') ? null : (int) $unitId;
 
-        // ✅ backward-compat (kalau frontend lama masih kirim "unit" string)
         $rawUnit = $request->query('unit');
         if ($unitId === null && $rawUnit !== null && $rawUnit !== '' && $rawUnit !== 'Semua Unit') {
             $unitId = $this->resolveUnitId($rawUnit);
@@ -125,7 +127,7 @@ class PpkController extends Controller
             ->sum('nilai_kontrak');
 
         $statusLabels = ["Perencanaan", "Pemilihan", "Pelaksanaan", "Selesai"];
-        $statusValues = $this->countByStatusPekerjaanPPK($unitId, $tahun, $statusLabels);
+        $statusValues = $this->countByStatusPekerjaan($unitId, $tahun, $statusLabels);
 
         $barLabels = [
             "Pengadaan\nLangsung",
@@ -135,7 +137,7 @@ class PpkController extends Controller
             "Tender\nTerbuka",
             "Swakelola"
         ];
-        $barValues = $this->countByMetodePengadaanPPK($unitId, $tahun, $barLabels);
+        $barValues = $this->countByMetodePengadaan($unitId, $tahun, $barLabels);
 
         return response()->json([
             'tahun'   => $tahun,
@@ -152,120 +154,53 @@ class PpkController extends Controller
         return $this->dashboardStats($request);
     }
 
-    private function countByStatusPekerjaanPPK(?int $unitId, ?int $tahun, array $labels): array
-    {
-        $rows = Pengadaan::query()
-            ->when($unitId !== null, fn($q) => $q->where('unit_id', $unitId))
-            ->when($tahun !== null, fn($q) => $q->where('tahun', $tahun))
-            ->select('status_pekerjaan', DB::raw('COUNT(*) as cnt'))
-            ->groupBy('status_pekerjaan')
-            ->pluck('cnt', 'status_pekerjaan')
-            ->toArray();
-
-        return array_map(fn($lbl) => (int)($rows[$lbl] ?? 0), $labels);
-    }
-
-    private function countByMetodePengadaanPPK(?int $unitId, ?int $tahun, array $labels): array
-    {
-        // ✅ Normalisasi supaya konek konsisten dengan nilai "jenis_pengadaan" di detail Arsip
-        $map = [
-            "Pengadaan\nLangsung"        => ["pengadaan langsung"],
-            "Penunjukan\nLangsung"       => ["penunjukan langsung"],
-            "E-Purchasing /\nE-Catalog"  => [
-                "e-purchasing / e-catalog",
-                "e-purchasing/e-catalog",
-                "e-purchasing",
-                "e-catalog",
-                "e-catalogue",
-                "ecatalog",
-                "e catalog",
-            ],
-            "Tender\nTerbatas"           => ["tender terbatas"],
-            "Tender\nTerbuka"            => ["tender terbuka", "tender"],
-            "Swakelola"                  => ["swakelola"],
-        ];
-
-        $raw = Pengadaan::query()
-            ->when($unitId !== null, fn($q) => $q->where('unit_id', $unitId))
-            ->when($tahun !== null, fn($q) => $q->where('tahun', $tahun))
-            ->whereNotNull('jenis_pengadaan')
-            ->whereRaw("TRIM(jenis_pengadaan) <> ''")
-            ->selectRaw("LOWER(TRIM(jenis_pengadaan)) as jp, COUNT(*) as cnt")
-            ->groupBy('jp')
-            ->pluck('cnt', 'jp')
-            ->toArray();
-
-        $out = [];
-        foreach ($labels as $lbl) {
-            $alts = $map[$lbl] ?? [mb_strtolower(trim($lbl), 'UTF-8')];
-            $sum = 0;
-            foreach ($alts as $k) {
-                $k = mb_strtolower(trim($k), 'UTF-8');
-                $sum += (int)($raw[$k] ?? 0);
-            }
-            $out[] = $sum;
-        }
-        return $out;
-    }
-
-    private function formatRupiahNumber($value): string
-    {
-        $num = (int)($value ?? 0);
-        return 'Rp ' . number_format($num, 0, ',', '.');
-    }
-
-    /**
-     * Arsip PBJ (PPK) - FILTER + SEARCH aman untuk PostgreSQL
-     * ✅ FINAL: sort nilai_kontrak server-side (sort_nilai=asc|desc)
-     * ✅ FIX: default TIDAK sort nilai kontrak (biar refresh balik "sedia kala")
-     */
     public function arsipIndex(Request $request)
     {
-        $ppkName = auth()->user()->name ?? "PPK Utama";
+        $superAdminName = auth()->user()->name ?? "Super Admin";
 
-        $q      = trim((string)$request->query('q', ''));
-        $unitQ  = trim((string)$request->query('unit', 'Semua'));
-        $status = trim((string)$request->query('status', 'Semua'));
-        $tahunQ = trim((string)$request->query('tahun', 'Semua'));
+        $q      = trim((string) $request->query('q', ''));
+        $unitQ  = trim((string) $request->query('unit', 'Semua'));
+        $status = trim((string) $request->query('status', 'Semua'));
+        $tahunQ = trim((string) $request->query('tahun', 'Semua'));
 
-        // ✅ sort nilai kontrak (server-side) - aktif hanya jika param ada
-        $sortNilaiRaw = $request->query('sort_nilai'); // null jika tidak ada
+        $sortNilaiRaw = $request->query('sort_nilai');
         $sortNilai = null;
         if ($sortNilaiRaw !== null && $sortNilaiRaw !== '') {
-            $tmp = strtolower(trim((string)$sortNilaiRaw));
-            if (in_array($tmp, ['asc', 'desc'], true)) $sortNilai = $tmp;
+            $tmp = strtolower(trim((string) $sortNilaiRaw));
+            if (in_array($tmp, ['asc', 'desc'], true)) {
+                $sortNilai = $tmp;
+            }
         }
 
-        $driver = DB::connection()->getDriverName();           // 'pgsql' / 'mysql'
-        $likeOp = $driver === 'pgsql' ? 'ilike' : 'like';      // pgsql pakai ILIKE
+        $driver = DB::connection()->getDriverName();
+        $likeOp = $driver === 'pgsql' ? 'ilike' : 'like';
 
-        // resolve unit_id
         $unitId = null;
         $unitQNorm = mb_strtolower($unitQ, 'UTF-8');
         if ($unitQ !== '' && $unitQNorm !== 'semua' && $unitQNorm !== 'semua unit') {
             $unitId = $this->resolveUnitId($unitQ);
         }
 
-        // status
         $statusNorm = mb_strtolower($status, 'UTF-8');
         $statusFixed = in_array($statusNorm, ['publik', 'privat'], true) ? ucfirst($statusNorm) : null;
 
-        // tahun robust
         $tahunInt = null;
         $tahunStr = null;
         if ($tahunQ !== '' && mb_strtolower($tahunQ, 'UTF-8') !== 'semua') {
             $tahunStr = $tahunQ;
-            if (ctype_digit($tahunQ)) $tahunInt = (int)$tahunQ;
+            if (ctype_digit($tahunQ)) {
+                $tahunInt = (int) $tahunQ;
+            }
         }
 
         $arsipsQuery = Pengadaan::with('unit')
             ->when($unitId !== null, fn($qq) => $qq->where('unit_id', $unitId))
             ->when($statusFixed !== null, fn($qq) => $qq->where('status_arsip', $statusFixed))
-
-            // tahun (aman untuk pgsql/mysql)
             ->when($tahunStr !== null, function ($qq) use ($tahunInt, $tahunStr, $driver) {
                 $qq->where(function ($w) use ($tahunInt, $tahunStr, $driver) {
-                    if ($tahunInt !== null) $w->orWhere('tahun', $tahunInt);
+                    if ($tahunInt !== null) {
+                        $w->orWhere('tahun', $tahunInt);
+                    }
 
                     if ($driver === 'pgsql') {
                         $w->orWhereRaw("TRIM(CAST(tahun AS TEXT)) = ?", [$tahunStr]);
@@ -274,15 +209,13 @@ class PpkController extends Controller
                     }
                 });
             })
-
-            // ✅ SEARCH q
             ->when($q !== '', function ($query) use ($q, $likeOp, $driver) {
                 $like = '%' . $q . '%';
 
                 $query->where(function ($w) use ($q, $like, $likeOp, $driver) {
                     if (ctype_digit($q)) {
-                        $w->orWhere('tahun', (int)$q);
-                        $w->orWhere('id', (int)$q);
+                        $w->orWhere('tahun', (int) $q);
+                        $w->orWhere('id', (int) $q);
                     }
 
                     $w->orWhere('nama_pekerjaan', $likeOp, $like)
@@ -314,11 +247,6 @@ class PpkController extends Controller
                 });
             });
 
-        /**
-         * ✅ SORTING FINAL
-         * - DEFAULT (tanpa sort_nilai): updated_at desc, id desc (sedia kala)
-         * - Kalau sort_nilai ada: nilai_kontrak asc/desc lalu tie-breaker updated_at/id
-         */
         $arsipsQuery->orderByDesc('updated_at')->orderByDesc('id');
 
         if ($sortNilai !== null) {
@@ -333,9 +261,7 @@ class PpkController extends Controller
             $arsipsQuery->orderByDesc('updated_at')->orderByDesc('id');
         }
 
-        $arsips = $arsipsQuery
-            ->paginate(10)
-            ->withQueryString();
+        $arsips = $arsipsQuery->paginate(10)->withQueryString();
 
         $mapped = $arsips->getCollection()->map(function (Pengadaan $p) {
             return [
@@ -364,13 +290,13 @@ class PpkController extends Controller
             ->distinct()
             ->orderBy('tahun', 'desc')
             ->pluck('tahun')
-            ->map(fn($t) => (string)$t)
+            ->map(fn($t) => (string) $t)
             ->values()
             ->all();
 
         if (count($years) === 0) {
-            $y = (int)date('Y');
-            $years = [(string)$y, (string)($y - 1), (string)($y - 2), (string)($y - 3), (string)($y - 4)];
+            $y = (int) date('Y');
+            $years = [(string) $y, (string) ($y - 1), (string) ($y - 2), (string) ($y - 3), (string) ($y - 4)];
         }
 
         $unitNameCol = Schema::hasColumn('units', 'nama') ? 'nama'
@@ -382,102 +308,91 @@ class PpkController extends Controller
             ->values()
             ->all();
 
-        return view('PPK.ArsipPBJ', compact('ppkName', 'arsips', 'unitOptions', 'years'));
+        return view('SuperAdmin.ArsipPBJ', compact('superAdminName', 'arsips', 'unitOptions', 'years'));
     }
 
     public function pengadaanCreate()
     {
-        $ppkName = auth()->user()->name ?? "PPK Utama";
+        $superAdminName = auth()->user()->name ?? "Super Admin";
 
         $tahunOptions = Pengadaan::whereNotNull('tahun')
-            ->select('tahun')->distinct()
+            ->select('tahun')
+            ->distinct()
             ->orderBy('tahun', 'desc')
             ->pluck('tahun')
-            ->map(fn($t) => (int)$t)
+            ->map(fn($t) => (int) $t)
             ->values()
             ->all();
 
         if (count($tahunOptions) === 0) {
-            $y = (int)date('Y');
+            $y = (int) date('Y');
             $tahunOptions = [$y, $y - 1, $y - 2, $y - 3, $y - 4];
         }
 
-        // ✅ kolom nama unit fleksibel
         $unitNameCol = Schema::hasColumn('units', 'nama') ? 'nama'
             : (Schema::hasColumn('units', 'nama_unit') ? 'nama_unit'
                 : (Schema::hasColumn('units', 'name') ? 'name' : 'id'));
 
-        // ✅ kirim data unit untuk dropdown berbasis unit_id (id + nama)
         $units = Unit::query()
             ->select(['id', $unitNameCol])
             ->orderBy($unitNameCol, 'asc')
             ->get();
 
-        // ✅ tetap kirim juga versi lama (nama-nama) biar tidak memecahkan blade lama kalau masih dipakai
         $unitOptions = $units->pluck($unitNameCol)->values()->all();
 
         $jenisPengadaanOptions = [
-        "Pengadaan Barang",
-        "Pengadaan Pekerjaan Konstruksi",
-        "Pengadaan Jasa Konsultasi",
-        "Pengadaan Jasa Lainnya",
-        ];
+    "Pengadaan Barang",
+    "Pengadaan Pekerjaan Konstruksi",
+    "Pengadaan Jasa Konsultasi",
+    "Pengadaan Jasa Lainnya",
+];
 
-        $metodePengadaanOptions = [
-        "Pengadaan Langsung",
-        "Penunjukan Langsung",
-        "E-Purchasing / E-Catalog",
-        "Tender Terbatas",
-        "Tender Terbuka",
-        "Swakelola",
-        ];
+$metodePengadaanOptions = [
+    "Pengadaan Langsung",
+    "Penunjukan Langsung",
+    "E-Purchasing / E-Catalogue",
+    "Tender Terbatas",
+    "Tender Terbuka",
+    "Swakelola",
+];
 
         $statusPekerjaanOptions = ["Perencanaan", "Pemilihan", "Pelaksanaan", "Selesai"];
 
-        return view('PPK.TambahPengadaan', compact(
-            'ppkName',
+        return view('SuperAdmin.TambahPengadaan', compact(
+            'superAdminName',
             'tahunOptions',
             'units',
             'unitNameCol',
-            'unitOptions', // backward-compat
+            'unitOptions',
             'jenisPengadaanOptions',
-            'statusPekerjaanOptions',
-            'metodePengadaanOptions',
+            'statusPekerjaanOptions'
         ));
     }
 
     public function pengadaanStore(Request $request)
     {
-        // ✅ utamakan unit_id, tapi tetap dukung unit_kerja (fallback lama) biar tidak error
         $rules = [
             'tahun' => 'required|integer|min:2000|max:' . (date('Y') + 5),
-
-            // baru
             'unit_id'   => 'nullable|integer|exists:units,id',
-            // lama (fallback)
             'unit_kerja' => 'nullable|string|max:255',
-
             'nama_pekerjaan' => 'nullable|string|max:255',
             'id_rup' => 'nullable|string|max:255',
             'jenis_pengadaan' => 'required|string|max:100',
             'status_pekerjaan' => 'required|string|max:100',
             'status_arsip' => 'required|in:Publik,Privat',
-
             'pagu_anggaran' => 'nullable|string|max:50',
             'hps' => 'nullable|string|max:50',
             'nilai_kontrak' => 'nullable|string|max:50',
             'nama_rekanan' => 'nullable|string|max:255',
-
             'dokumen_tidak_dipersyaratkan_json' => 'nullable|string',
             'dokumen_tidak_dipersyaratkan' => 'nullable|array',
         ];
 
         $data = $request->validate($rules);
 
-        // ✅ resolve unit_id: prefer unit_id, else resolve dari unit_kerja (lama)
         $resolvedUnitId = null;
         if (!empty($data['unit_id'])) {
-            $resolvedUnitId = (int)$data['unit_id'];
+            $resolvedUnitId = (int) $data['unit_id'];
         } elseif (!empty($data['unit_kerja'])) {
             $resolvedUnitId = $this->resolveUnitId($data['unit_kerja']);
         }
@@ -489,21 +404,19 @@ class PpkController extends Controller
 
         $toInt = function ($v) {
             if ($v === null) return null;
-            $num = preg_replace('/[^0-9]/', '', (string)$v);
-            return $num === '' ? null : (int)$num;
+            $num = preg_replace('/[^0-9]/', '', (string) $v);
+            return $num === '' ? null : (int) $num;
         };
 
         $payload = [
-            'tahun' => (int)$data['tahun'],
-            'unit_id' => (int)$resolvedUnitId,
+            'tahun' => (int) $data['tahun'],
+            'unit_id' => (int) $resolvedUnitId,
             'created_by' => Auth::id(),
-
             'nama_pekerjaan' => $data['nama_pekerjaan'] ?? null,
             'id_rup' => $data['id_rup'] ?? null,
             'jenis_pengadaan' => $data['jenis_pengadaan'],
             'status_pekerjaan' => $data['status_pekerjaan'],
             'status_arsip' => $data['status_arsip'],
-
             'pagu_anggaran' => $toInt($data['pagu_anggaran'] ?? null),
             'hps' => $toInt($data['hps'] ?? null),
             'nilai_kontrak' => $toInt($data['nilai_kontrak'] ?? null),
@@ -517,7 +430,9 @@ class PpkController extends Controller
             $json = $request->input('dokumen_tidak_dipersyaratkan_json');
             if (is_string($json) && trim($json) !== '') {
                 $decoded = json_decode($json, true);
-                if (is_array($decoded)) $docTidak = $decoded;
+                if (is_array($decoded)) {
+                    $docTidak = $decoded;
+                }
             }
         }
         $payload['dokumen_tidak_dipersyaratkan'] = array_values(array_filter($docTidak, fn($x) => $x !== null && $x !== ''));
@@ -531,13 +446,17 @@ class PpkController extends Controller
 
             DB::commit();
 
-            return redirect()->route('ppk.arsip')->with('success', 'Pengadaan baru berhasil ditambahkan!');
+            return redirect()->route('superadmin.arsip')->with('success', 'Pengadaan baru berhasil ditambahkan!');
         } catch (\Throwable $e) {
             DB::rollBack();
 
             if (isset($pengadaan) && $pengadaan instanceof Pengadaan) {
-                try { Storage::disk('public')->deleteDirectory("pengadaan/{$pengadaan->id}"); } catch (\Throwable $ex) {}
-                try { $pengadaan->delete(); } catch (\Throwable $ex) {}
+                try {
+                    Storage::disk('public')->deleteDirectory("pengadaan/{$pengadaan->id}");
+                } catch (\Throwable $ex) {}
+                try {
+                    $pengadaan->delete();
+                } catch (\Throwable $ex) {}
             }
 
             return redirect()->back()->withInput()->withErrors(['upload' => 'Gagal menyimpan pengadaan/dokumen.']);
@@ -545,41 +464,47 @@ class PpkController extends Controller
     }
 
     public function arsipEdit($id)
-    {
-        $ppkName = auth()->user()->name ?? "PPK Utama";
+{
+    $superAdminName = auth()->user()->name ?? "Super Admin";
 
-        $pengadaan = Pengadaan::with('unit')->findOrFail($id);
-        $arsip = $pengadaan;
+    $pengadaan = Pengadaan::with('unit')->findOrFail($id);
+    $arsip = $pengadaan;
 
-        $tahunOptions = Pengadaan::whereNotNull('tahun')
-            ->select('tahun')->distinct()
-            ->orderBy('tahun', 'desc')
-            ->pluck('tahun')
-            ->map(fn($t) => (int)$t)
-            ->values()
-            ->all();
+    $tahunOptions = Pengadaan::whereNotNull('tahun')
+        ->select('tahun')
+        ->distinct()
+        ->orderBy('tahun', 'desc')
+        ->pluck('tahun')
+        ->map(fn($t) => (int) $t)
+        ->values()
+        ->all();
 
-        if (count($tahunOptions) === 0) {
-            $y = (int)date('Y');
-            $tahunOptions = [$y, $y - 1, $y - 2, $y - 3, $y - 4];
-        }
+    if (count($tahunOptions) === 0) {
+        $y = (int) date('Y');
+        $tahunOptions = [$y, $y - 1, $y - 2, $y - 3, $y - 4];
+    }
 
-        $unitNameCol = Schema::hasColumn('units', 'nama') ? 'nama'
-            : (Schema::hasColumn('units', 'nama_unit') ? 'nama_unit'
-                : (Schema::hasColumn('units', 'name') ? 'name' : 'id'));
+    $unitNameCol = Schema::hasColumn('units', 'nama') ? 'nama'
+        : (Schema::hasColumn('units', 'nama_unit') ? 'nama_unit'
+            : (Schema::hasColumn('units', 'name') ? 'name' : 'id'));
 
-        // ✅ untuk dropdown edit berbasis unit_id
-        $units = Unit::query()->select(['id', $unitNameCol])->orderBy($unitNameCol, 'asc')->get();
-        $unitOptions = $units->pluck($unitNameCol)->values()->all(); // backward-compat
+    $units = Unit::query()
+        ->select(['id', $unitNameCol])
+        ->orderBy($unitNameCol, 'asc')
+        ->get();
 
-        $jenisPengadaanOptions = [
-        "Pengadaan Barang",
-        "Pengadaan Pekerjaan Konstruksi",
-        "Pengadaan Jasa Konsultasi",
-        "Pengadaan Jasa Lainnya",
-        ];
+    $unitOptions = $units->pluck($unitNameCol)->values()->all();
 
-        $metodePengadaanOptions = [
+    // 🔹 JENIS PENGADAAN
+    $jenisPengadaanOptions = [
+    "Pengadaan Barang",
+    "Pengadaan Pekerjaan Konstruksi",
+    "Pengadaan Jasa Konsultasi",
+    "Pengadaan Jasa Lainnya",
+];
+
+    // 🔥 METODE PENGADAAN (FIX ERROR DI SINI)
+    $metodePengadaanOptions = [
         "Pengadaan Langsung",
         "Penunjukan Langsung",
         "E-Purchasing / E-Catalogue",
@@ -587,23 +512,42 @@ class PpkController extends Controller
         "Tender Terbuka",
         "Swakelola",
     ];
-            $statusPekerjaanOptions = ["Perencanaan", "Pemilihan", "Pelaksanaan", "Selesai"];
 
-        $pengadaan->dokumen_tidak_dipersyaratkan = $this->normalizeArray($pengadaan->dokumen_tidak_dipersyaratkan);
+    // 🔹 STATUS PEKERJAAN
+    $statusPekerjaanOptions = ["Perencanaan", "Pemilihan", "Pelaksanaan", "Selesai"];
 
-        return view('ppk.EditArsip', compact(
-            'ppkName',
-            'pengadaan',
-            'arsip',
-            'tahunOptions',
-            'units',
-            'unitNameCol',
-            'unitOptions',
-            'jenisPengadaanOptions',
-            'statusPekerjaanOptions',
-            'metodePengadaanOptions',
-        ));
+    // 🔹 DOKUMEN EXISTING
+    $dokumenExisting = [];
+    foreach ($this->dokumenFieldLabels() as $field => $label) {
+        $paths = $this->normalizeArray($pengadaan->{$field} ?? null);
+        if (count($paths) > 0) {
+            $dokumenExisting[$field] = collect($paths)->map(function ($p) use ($label) {
+                $path = $this->normalizePublicDiskPath($p);
+                return [
+                    'label' => $label,
+                    'path' => $path,
+                    'url' => '/storage/' . ltrim((string) $path, '/'),
+                ];
+            })->all();
+        }
     }
+
+    $pengadaan->dokumen_tidak_dipersyaratkan = $this->normalizeArray($pengadaan->dokumen_tidak_dipersyaratkan);
+
+    return view('SuperAdmin.EditArsip', compact(
+        'superAdminName',
+        'pengadaan',
+        'arsip',
+        'tahunOptions',
+        'units',
+        'unitNameCol',
+        'unitOptions',
+        'jenisPengadaanOptions',
+        'metodePengadaanOptions', // 🔥 INI YANG TAMBAH
+        'statusPekerjaanOptions',
+        'dokumenExisting'
+    ));
+}
 
     public function arsipUpdate(Request $request, $id)
     {
@@ -611,23 +555,17 @@ class PpkController extends Controller
 
         $rules = [
             'tahun' => 'nullable|integer|min:2000|max:' . (date('Y') + 5),
-
-            // baru
             'unit_id' => 'nullable|integer|exists:units,id',
-            // lama (fallback)
             'unit_kerja' => 'nullable|string|max:255',
-
             'nama_pekerjaan' => 'nullable|string|max:255',
             'id_rup' => 'nullable|string|max:255',
             'jenis_pengadaan' => 'nullable|string|max:100',
             'status_pekerjaan' => 'nullable|string|max:100',
             'status_arsip' => 'nullable|in:Publik,Privat',
-
             'pagu_anggaran' => 'nullable|string|max:50',
             'hps' => 'nullable|string|max:50',
             'nilai_kontrak' => 'nullable|string|max:50',
             'nama_rekanan' => 'nullable|string|max:255',
-
             'dokumen_tidak_dipersyaratkan_json' => 'nullable|string',
             'dokumen_tidak_dipersyaratkan' => 'nullable|array',
         ];
@@ -636,20 +574,19 @@ class PpkController extends Controller
 
         $toInt = function ($v) {
             if ($v === null) return null;
-            $num = preg_replace('/[^0-9]/', '', (string)$v);
-            return $num === '' ? null : (int)$num;
+            $num = preg_replace('/[^0-9]/', '', (string) $v);
+            return $num === '' ? null : (int) $num;
         };
 
         DB::beginTransaction();
         try {
-            if ($request->filled('tahun')) $pengadaan->tahun = (int)$data['tahun'];
+            if ($request->filled('tahun')) $pengadaan->tahun = (int) $data['tahun'];
 
-            // ✅ update unit: prefer unit_id, else unit_kerja (fallback lama)
             if ($request->filled('unit_id') || $request->filled('unit_kerja')) {
                 $resolvedUnitId = null;
 
                 if ($request->filled('unit_id')) {
-                    $resolvedUnitId = (int)$data['unit_id'];
+                    $resolvedUnitId = (int) $data['unit_id'];
                 } elseif ($request->filled('unit_kerja')) {
                     $resolvedUnitId = $this->resolveUnitId($data['unit_kerja']);
                 }
@@ -660,7 +597,7 @@ class PpkController extends Controller
                     return redirect()->back()->withInput()->withErrors([$key => 'Unit kerja tidak valid / tidak ditemukan di database.']);
                 }
 
-                $pengadaan->unit_id = (int)$resolvedUnitId;
+                $pengadaan->unit_id = (int) $resolvedUnitId;
             }
 
             if ($request->filled('nama_pekerjaan')) $pengadaan->nama_pekerjaan = $data['nama_pekerjaan'];
@@ -681,7 +618,9 @@ class PpkController extends Controller
                 $json = $request->input('dokumen_tidak_dipersyaratkan_json');
                 if (is_string($json) && trim($json) !== '') {
                     $decoded = json_decode($json, true);
-                    if (is_array($decoded)) $docTidak = $decoded;
+                    if (is_array($decoded)) {
+                        $docTidak = $decoded;
+                    }
                 }
             }
             $pengadaan->dokumen_tidak_dipersyaratkan = array_values(array_filter($docTidak, fn($x) => $x !== null && $x !== ''));
@@ -692,7 +631,7 @@ class PpkController extends Controller
             $pengadaan->save();
             DB::commit();
 
-            return redirect()->route('ppk.arsip')->with('success', 'Arsip berhasil diperbarui.');
+            return redirect()->route('superadmin.arsip')->with('success', 'Arsip berhasil diperbarui.');
         } catch (\Throwable $e) {
             DB::rollBack();
             return redirect()->back()->withInput()->withErrors(['update' => 'Gagal memperbarui arsip.']);
@@ -705,68 +644,30 @@ class PpkController extends Controller
 
         DB::beginTransaction();
         try {
-            try { Storage::disk('public')->deleteDirectory("pengadaan/{$pengadaan->id}"); } catch (\Throwable $e) {}
+            try {
+                Storage::disk('public')->deleteDirectory("pengadaan/{$pengadaan->id}");
+            } catch (\Throwable $e) {}
+
             $pengadaan->delete();
 
             DB::commit();
-            return redirect()->route('ppk.arsip')->with('success', 'Arsip berhasil dihapus.');
+            return redirect()->route('superadmin.arsip')->with('success', 'Arsip berhasil dihapus.');
         } catch (\Throwable $e) {
             DB::rollBack();
             return redirect()->back()->withErrors(['delete' => 'Gagal menghapus arsip.']);
         }
     }
 
-    public function hapusDokumenFile(Request $request, $id)
+    public function kelolaMenu()
     {
-        $pengadaan = Pengadaan::findOrFail($id);
-
-        $field = (string)$request->input('field', '');
-        $path  = (string)$request->input('path', '');
-
-        if ($field === '' || $path === '') {
-            return response()->json(['message' => 'Field/path tidak valid.'], 422);
-        }
-
-        if (!array_key_exists($field, $pengadaan->getAttributes())) {
-            return response()->json(['message' => 'Field dokumen tidak ditemukan.'], 404);
-        }
-
-        $arr = $this->normalizeArray($pengadaan->{$field});
-        $normPath = $this->normalizePublicDiskPath($path);
-
-        if (!$normPath) {
-            return response()->json(['message' => 'Path tidak valid.'], 422);
-        }
-
-        $new = array_values(array_filter($arr, function ($x) use ($normPath) {
-            $p = $this->normalizePublicDiskPath($x);
-            return $p !== $normPath;
-        }));
-
-        DB::beginTransaction();
-        try {
-            try { Storage::disk('public')->delete($normPath); } catch (\Throwable $e) {}
-
-            $pengadaan->{$field} = $new;
-            $pengadaan->save();
-
-            DB::commit();
-            return response()->json(['ok' => true]);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return response()->json(['message' => 'Gagal menghapus file.'], 500);
-        }
-    }
-
-    public function kelolaAkun()
-    {
-        $ppkName = auth()->user()->name ?? "PPK Utama";
-        return view('PPK.KelolaAkun', compact('ppkName'));
+        $superAdminName = auth()->user()->name ?? "Super Admin";
+        return view('SuperAdmin.KelolaMenu', compact('superAdminName'));
     }
 
     public function updateAkun(Request $request)
     {
         $user = auth()->user();
+
         if (!$user) {
             return redirect()->back()->withErrors(['auth' => 'Kamu belum login.'])->withInput();
         }
@@ -800,14 +701,106 @@ class PpkController extends Controller
 
         $user->save();
 
-        return redirect()->route('ppk.kelola.akun')->with('success', 'Akun berhasil diperbarui.');
+        return redirect()->route('superadmin.kelola.akun')->with('success', 'Akun berhasil diperbarui.');
     }
+
+    public function kelolaAkun()
+{
+    $user = auth()->user();
+
+    $superAdminName  = $user->name ?? 'Super Admin';
+    $superAdminEmail = $user->email ?? 'superadmin@gmail.com';
+    $roleText        = 'SUPER ADMIN';
+
+    return view('SuperAdmin.KelolaAkun', compact(
+        'superAdminName',
+        'superAdminEmail',
+        'roleText'
+    ));
+}
+
+public function kelolaAkunPpk()
+{
+    $superAdminName = auth()->user()->name ?? 'Super Admin';
+
+    // Dummy data dulu, nanti bisa ambil dari database users role=ppk
+    $ppkAccounts = [
+        [
+            'username' => 'ppk_lppm',
+            'unit_kerja' => 'Lembaga Penjaminan Mutu dan Pengembangan Pembelajaran (LPMPP)',
+            'email' => 'ppk.lppm@unsoed.ac.id',
+            'password' => 'ppk_lppm',
+            'status' => 'Aktif',
+        ],
+        [
+            'username' => 'ppk_lppm',
+            'unit_kerja' => 'Lembaga Penjaminan Mutu dan Pengembangan Pembelajaran (LPMPP)',
+            'email' => 'ppk.lppm@unsoed.ac.id',
+            'password' => 'ppk_lppm',
+            'status' => 'Tidak Aktif',
+        ],
+        [
+            'username' => 'ppk_lppm',
+            'unit_kerja' => 'Lembaga Penjaminan Mutu dan Pengembangan Pembelajaran (LPMPP)',
+            'email' => 'ppk.lppm@unsoed.ac.id',
+            'password' => 'ppk_lppm',
+            'status' => 'Aktif',
+        ],
+        [
+            'username' => 'ppk_lppm',
+            'unit_kerja' => 'Lembaga Penjaminan Mutu dan Pengembangan Pembelajaran (LPMPP)',
+            'email' => 'ppk.lppm@unsoed.ac.id',
+            'password' => 'ppk_lppm',
+            'status' => 'Aktif',
+        ],
+    ];
+
+    return view('SuperAdmin.KelolaAkunPpk', compact('superAdminName', 'ppkAccounts'));
+}
+public function storePpk(Request $request)
+{
+    $request->validate([
+        'username'   => ['required', 'string', 'max:255'],
+        'unit_kerja' => ['required', 'string', 'max:255'],
+        'email'      => ['required', 'email', 'max:255'],
+        'password'   => ['required', 'string', 'max:255'],
+        'status'     => ['required', 'in:Aktif,Tidak Aktif'],
+    ]);
+
+    return redirect()
+        ->route('superadmin.kelola.akun.ppk')
+        ->with('success', 'Data admin PPK berhasil ditambahkan.');
+}
+
+public function updatePpk(Request $request, $id)
+{
+    $request->validate([
+        'username'   => ['required', 'string', 'max:255'],
+        'unit_kerja' => ['required', 'string', 'max:255'],
+        'email'      => ['required', 'email', 'max:255'],
+        'password'   => ['required', 'string', 'max:255'],
+        'status'     => ['required', 'in:Aktif,Tidak Aktif'],
+    ]);
+
+    return redirect()
+        ->route('superadmin.kelola.akun.ppk')
+        ->with('success', 'Data admin PPK berhasil diperbarui.');
+}
+
+public function destroyPpk($id)
+{
+    return redirect()
+        ->route('superadmin.kelola.akun.ppk')
+        ->with('success', 'Data admin PPK berhasil dihapus.');
+}
 
     public function showDokumen($id, $field, $file)
     {
         $pengadaan = Pengadaan::findOrFail($id);
 
-        if (!isset($pengadaan->{$field})) abort(404);
+        if (!isset($pengadaan->{$field})) {
+            abort(404);
+        }
 
         $arr = $this->normalizeArray($pengadaan->{$field});
 
@@ -824,9 +817,148 @@ class PpkController extends Controller
         abort(404);
     }
 
-    // =========================
-    // HELPERS
-    // =========================
+    public function kelolaAkunUnit()
+{
+    $superAdminName = auth()->user()->name ?? 'Super Admin';
+
+    $unitAccounts = User::query()
+        ->whereRaw('LOWER(role) = ?', ['unit'])
+        ->orderBy('id', 'desc')
+        ->get()
+        ->map(function ($user) {
+            return [
+                'id' => $user->id,
+                'username' => $user->name,
+                'unit_kerja' => $user->unit_kerja ?? '-',
+                'email' => $user->email,
+                'password' => '********',
+                'status' => $user->status ?? 'Aktif',
+            ];
+        })
+        ->toArray();
+
+    return view('SuperAdmin.KelolaAkunUnit', compact('superAdminName', 'unitAccounts'));
+}
+
+public function storeUnit(Request $request)
+{
+    $data = $request->validate([
+        'username'   => ['required', 'string', 'max:255'],
+        'unit_kerja' => ['required', 'string', 'max:255'],
+        'email'      => ['required', 'email', 'max:255', 'unique:users,email'],
+        'password'   => ['required', 'string', 'min:6'],
+        'status'     => ['required', Rule::in(['Aktif', 'Tidak Aktif'])],
+    ]);
+
+    User::create([
+        'name'       => $data['username'],
+        'unit_kerja' => $data['unit_kerja'],
+        'email'      => $data['email'],
+        'password'   => Hash::make($data['password']),
+        'role'       => 'unit',
+        'status'     => $data['status'],
+    ]);
+
+    return redirect()
+        ->route('superadmin.kelola.akun.unit')
+        ->with('success', 'Data PIC Unit berhasil ditambahkan.');
+}
+
+public function updateUnit(Request $request, $id)
+{
+    $user = User::whereRaw('LOWER(role) = ?', ['unit'])->findOrFail($id);
+
+    $data = $request->validate([
+        'username'   => ['required', 'string', 'max:255'],
+        'unit_kerja' => ['required', 'string', 'max:255'],
+        'email'      => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+        'password'   => ['nullable', 'string', 'min:6'],
+        'status'     => ['required', Rule::in(['Aktif', 'Tidak Aktif'])],
+    ]);
+
+    $user->name = $data['username'];
+    $user->unit_kerja = $data['unit_kerja'];
+    $user->email = $data['email'];
+    $user->status = $data['status'];
+    $user->role = 'unit';
+
+    if (!empty($data['password'])) {
+        $user->password = Hash::make($data['password']);
+    }
+
+    $user->save();
+
+    return redirect()
+        ->route('superadmin.kelola.akun.unit')
+        ->with('success', 'Data PIC Unit berhasil diperbarui.');
+}
+
+public function destroyUnit($id)
+{
+    $user = User::whereRaw('LOWER(role) = ?', ['unit'])->findOrFail($id);
+    $user->delete();
+
+    return redirect()
+        ->route('superadmin.kelola.akun.unit')
+        ->with('success', 'Data PIC Unit berhasil dihapus.');
+}
+
+    private function countByStatusPekerjaan(?int $unitId, ?int $tahun, array $labels): array
+    {
+        $rows = Pengadaan::query()
+            ->when($unitId !== null, fn($q) => $q->where('unit_id', $unitId))
+            ->when($tahun !== null, fn($q) => $q->where('tahun', $tahun))
+            ->select('status_pekerjaan', DB::raw('COUNT(*) as cnt'))
+            ->groupBy('status_pekerjaan')
+            ->pluck('cnt', 'status_pekerjaan')
+            ->toArray();
+
+        return array_map(fn($lbl) => (int) ($rows[$lbl] ?? 0), $labels);
+    }
+
+    private function countByMetodePengadaan(?int $unitId, ?int $tahun, array $labels): array
+    {
+        $map = [
+            "Pengadaan\nLangsung"        => ["pengadaan langsung"],
+            "Penunjukan\nLangsung"       => ["penunjukan langsung"],
+            "E-Purchasing /\nE-Catalog"  => [
+                "e-purchasing / e-catalog",
+                "e-purchasing/e-catalog",
+                "e-purchasing",
+                "e-catalog",
+                "e-catalogue",
+                "ecatalog",
+                "e catalog",
+            ],
+            "Tender\nTerbatas"           => ["tender terbatas"],
+            "Tender\nTerbuka"            => ["tender terbuka", "tender"],
+            "Swakelola"                  => ["swakelola"],
+        ];
+
+        $raw = Pengadaan::query()
+            ->when($unitId !== null, fn($q) => $q->where('unit_id', $unitId))
+            ->when($tahun !== null, fn($q) => $q->where('tahun', $tahun))
+            ->whereNotNull('jenis_pengadaan')
+            ->whereRaw("TRIM(jenis_pengadaan) <> ''")
+            ->selectRaw("LOWER(TRIM(jenis_pengadaan)) as jp, COUNT(*) as cnt")
+            ->groupBy('jp')
+            ->pluck('cnt', 'jp')
+            ->toArray();
+
+        $out = [];
+        foreach ($labels as $lbl) {
+            $alts = $map[$lbl] ?? [mb_strtolower(trim($lbl), 'UTF-8')];
+            $sum = 0;
+            foreach ($alts as $k) {
+                $k = mb_strtolower(trim($k), 'UTF-8');
+                $sum += (int) ($raw[$k] ?? 0);
+            }
+            $out[] = $sum;
+        }
+
+        return $out;
+    }
+
     private function handleRemoveExistingByHiddenInputs(Request $request, Pengadaan $pengadaan): void
     {
         $fileFields = array_keys($this->dokumenFieldLabels());
@@ -848,7 +980,9 @@ class PpkController extends Controller
             }));
 
             foreach ($removeNorm as $p) {
-                try { Storage::disk('public')->delete($p); } catch (\Throwable $e) {}
+                try {
+                    Storage::disk('public')->delete($p);
+                } catch (\Throwable $e) {}
             }
 
             $pengadaan->{$field} = $new;
@@ -874,12 +1008,16 @@ class PpkController extends Controller
                 $base = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
 
                 $safeBase = Str::slug($base);
-                if ($safeBase === '') $safeBase = 'dokumen';
+                if ($safeBase === '') {
+                    $safeBase = 'dokumen';
+                }
 
                 $filename = $safeBase . '_' . date('Ymd_His') . '_' . Str::random(6) . '.' . $ext;
-
                 $stored = $file->storeAs("pengadaan/{$pengadaan->id}/{$field}", $filename, 'public');
-                if ($stored) $paths[] = $stored;
+
+                if ($stored) {
+                    $paths[] = $stored;
+                }
             }
 
             $pengadaan->{$field} = array_values($paths);
@@ -889,12 +1027,11 @@ class PpkController extends Controller
     private function buildDokumenList(Pengadaan $p): array
     {
         $labels = $this->dokumenFieldLabels();
-        $attrs  = $p->getAttributes();
-
+        $attrs = $p->getAttributes();
         $out = [];
 
         foreach ($attrs as $field => $rawValue) {
-            $lk = strtolower((string)$field);
+            $lk = strtolower((string) $field);
 
             if (!(str_contains($lk, 'dokumen') || str_contains($lk, 'file') || str_contains($lk, 'lampiran'))) {
                 continue;
@@ -931,7 +1068,7 @@ class PpkController extends Controller
     {
         if ($raw === null) return null;
 
-        $s = trim((string)$raw);
+        $s = trim((string) $raw);
         if ($s === '') return null;
 
         $s = str_replace('\\', '/', $s);
@@ -939,7 +1076,9 @@ class PpkController extends Controller
 
         if (Str::startsWith($s, ['http://', 'https://'])) {
             $u = parse_url($s);
-            if (!empty($u['path'])) $s = $u['path'];
+            if (!empty($u['path'])) {
+                $s = $u['path'];
+            }
         }
 
         $s = ltrim($s, '/');
@@ -1017,7 +1156,13 @@ class PpkController extends Controller
     private function formatRupiah($value): string
     {
         if ($value === null || $value === '') return '-';
-        $num = (int)$value;
+        $num = (int) $value;
+        return 'Rp ' . number_format($num, 0, ',', '.');
+    }
+
+    private function formatRupiahNumber($value): string
+    {
+        $num = (int) ($value ?? 0);
         return 'Rp ' . number_format($num, 0, ',', '.');
     }
 
@@ -1025,10 +1170,10 @@ class PpkController extends Controller
     {
         if ($rawUnit === null) return null;
 
-        $raw = trim((string)$rawUnit);
+        $raw = trim((string) $rawUnit);
         if ($raw === '') return null;
 
-        if (ctype_digit($raw)) return (int)$raw;
+        if (ctype_digit($raw)) return (int) $raw;
 
         if (!Schema::hasTable('units')) return null;
 
@@ -1039,30 +1184,32 @@ class PpkController extends Controller
         try {
             if ($hasKode) {
                 $u = Unit::whereRaw('LOWER(kode) = ?', [mb_strtolower($raw)])->first();
-                if ($u) return (int)$u->id;
+                if ($u) return (int) $u->id;
             }
+
             if ($hasSlug) {
                 $u = Unit::whereRaw('LOWER(slug) = ?', [mb_strtolower($raw)])->first();
-                if ($u) return (int)$u->id;
+                if ($u) return (int) $u->id;
             }
+
             if ($hasUnitIdCol) {
                 $u = Unit::whereRaw('LOWER(unit_id) = ?', [mb_strtolower($raw)])->first();
-                if ($u) return (int)$u->id;
+                if ($u) return (int) $u->id;
             }
 
             if (Schema::hasColumn('units', 'nama')) {
                 $u = Unit::whereRaw('LOWER(nama) = ?', [mb_strtolower($raw)])->first();
-                if ($u) return (int)$u->id;
+                if ($u) return (int) $u->id;
             }
 
             if (Schema::hasColumn('units', 'nama_unit')) {
                 $u = Unit::whereRaw('LOWER(nama_unit) = ?', [mb_strtolower($raw)])->first();
-                if ($u) return (int)$u->id;
+                if ($u) return (int) $u->id;
             }
 
             if (Schema::hasColumn('units', 'name')) {
-                $u2 = Unit::whereRaw('LOWER(name) = ?', [mb_strtolower($raw)])->first();
-                if ($u2) return (int)$u2->id;
+                $u = Unit::whereRaw('LOWER(name) = ?', [mb_strtolower($raw)])->first();
+                if ($u) return (int) $u->id;
             }
         } catch (\Throwable $e) {
             return null;

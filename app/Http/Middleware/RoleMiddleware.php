@@ -13,14 +13,14 @@ class RoleMiddleware
     {
         $user = Auth::user();
 
-        // belum login
         if (!$user) {
             return redirect()->route('login');
         }
 
-        // role tidak cocok
-        if (!isset($user->role) || $user->role !== $role) {
-            // lempar ke gerbang biar smart redirect kamu jalan
+        $userRole = strtolower(trim((string)($user->role ?? '')));
+        $expected = strtolower(trim($role));
+
+        if ($userRole !== $expected) {
             return redirect()->route('home');
         }
 
