@@ -256,7 +256,7 @@
             <th style="width:90px;">Tahun</th>
             <th style="width:180px;">Unit Kerja</th>
             <th>Nama Pekerjaan</th>
-
+            <th style="width:180px;">Metode PBJ</th> <!-- ✅ TAMBAH INI -->
             <th style="width:200px;">
               <span class="pbj-th-sort">
                 Nilai Kontrak
@@ -307,6 +307,12 @@
                 </div>
               </td>
 
+              <td class="pbj-metode">
+                <span class="metode-badge">
+                  {{ $a->metode_pbj ?? $a->jenis_pengadaan ?? $a->metode ?? '-' }}
+                </span>
+              </td>
+
               <td class="pbj-money">{{ $nilaiText }}</td>
 
               <td>
@@ -329,7 +335,7 @@
 
           @if($totalRows === 0)
             <tr>
-              <td colspan="7" style="text-align:center; padding:22px;">
+              <td colspan="8" style="text-align:center; padding:22px;">
                 Tidak ada data arsip publik yang sesuai filter.
               </td>
             </tr>

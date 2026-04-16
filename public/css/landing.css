@@ -919,7 +919,7 @@ html{
   color:#fff;
   text-align: center;  
   padding:12px 14px;
-  font-weight:700;
+  font-weight:600;
   white-space:nowrap;
   vertical-align: middle;
 }
@@ -935,6 +935,55 @@ html{
   text-align: center;
 }
 
+.pbj-metode {
+  text-align: center;
+}
+
+.metode-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 6px 12px;
+  border-radius: 8px;
+
+  background: #dbeafe;
+  color: #1e40af;
+
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+
+  width: 160px;
+  height: 34px;
+
+  text-align: center;
+}
+
+.pbj-unit {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pbj-job-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* SAMAIN SPACING ROW */
+.pbj-table tbody td {
+  padding: 14px 14px;
+  border-top: 1px solid #eef3f6;
+  vertical-align: middle;
+}
+
+/* HEADER */
+.pbj-table thead th {
+  font-weight: 600;
+  text-align: center;
+}
 /* ===============================
    LINK KEMBALI (PBJ)
 =============================== */
@@ -965,31 +1014,30 @@ html{
    CENTER ISI TABEL PBJ (TD)
 =============================== */
 
-/* Tahun */
-.pbj-table tbody td:nth-child(1){
-  text-align: center;
-}
-
-/* Nilai Kontrak */
+/* Metode PBJ */
 .pbj-table tbody td:nth-child(4){
   text-align: center;
 }
 
-/* Status Arsip */
+/* Nilai Kontrak */
 .pbj-table tbody td:nth-child(5){
   text-align: center;
 }
 
-/* Status Pekerjaan */
+/* Status Arsip */
 .pbj-table tbody td:nth-child(6){
   text-align: center;
 }
 
-/* Aksi */
+/* Status Pekerjaan */
 .pbj-table tbody td:nth-child(7){
   text-align: center;
 }
 
+/* Aksi */
+.pbj-table tbody td:nth-child(8){
+  text-align: center;
+}
 .pbj-table td .chip{
   margin: 0 auto;
 }

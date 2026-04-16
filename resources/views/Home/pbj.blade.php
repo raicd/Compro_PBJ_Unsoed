@@ -271,9 +271,9 @@
             <th style="width:90px;">Tahun</th>
             <th style="width:180px;">Unit Kerja</th>
             <th>Nama Pekerjaan</th>
-            <th style="width:200px;">
+            <th style="width:180px;">Metode PBJ</th> 
+            <th style="width:200px;">Nilai Kontrak</th>
               <span class="pbj-th-sort">
-                Nilai Kontrak
                 <button type="button" class="pbj-sort-btn" id="sortNilaiBtn" title="Urutkan Nilai Kontrak">
                   <i class="bi bi-arrow-down-up" id="sortNilaiIcon"></i>
                 </button>
@@ -318,6 +318,10 @@
                 <div class="pbj-job-title" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                   {{ $a->nama_pekerjaan ?? '-' }}
                 </div>
+              </td>
+
+              <td class="pbj-metode">
+                <span class="metode-badge">{{ $a->metode_pbj ?? $a->jenis_pengadaan ?? $a->metode ?? '-' }}</span>
               </td>
 
               <td class="pbj-money">{{ $nilaiText }}</td>
@@ -612,8 +616,8 @@ document.addEventListener('DOMContentLoaded', () => {
       .filter(tr => tr.children && tr.children.length >= 7);
 
     rows.sort((a, b) => {
-      const aVal = parseRupiah(a.children[3].innerText);
-      const bVal = parseRupiah(b.children[3].innerText);
+      const aVal = parseRupiah(a.children[4].innerText);
+      const bVal = parseRupiah(b.children[4].innerText);
       return direction === 'desc' ? bVal - aVal : aVal - bVal;
     });
 
