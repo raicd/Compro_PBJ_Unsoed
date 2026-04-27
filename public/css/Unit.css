@@ -1489,11 +1489,24 @@ html, body{
 /* 4) MAIN jadi area scroll */
 .dash-main{
   flex: 1 !important;
-  height: 100vh !important;
+  min-width: 0 !important; /* 🔥 WAJIB */
+  height: auto !important; /* 🔥 UBAH INI */
   overflow-y: auto !important;
   overflow-x: hidden !important;
+  padding-bottom: 40px; /* biar tombol gak mepet bawah */
 }
 
+.a-card-body {
+  overflow: visible;
+}
+
+.a-pass input {
+  min-width: 0;
+}
+
+.a-field {
+  min-width: 0;
+}
 /* 5) Kalau ada modal yang pakai blur, pastikan tidak mematikan sticky */
 body.modal-open .dash-wrap{
   overflow: hidden !important;

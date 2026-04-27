@@ -245,8 +245,19 @@
     font-weight: 400;
   }
 
-  html, body{ height:100%; overflow:hidden; }
-  .dash-wrap, .dash-main{ height:100vh; overflow:hidden; }
+  html, body{
+  height: 100%;
+  overflow-x: hidden;
+}
+
+.dash-wrap{
+  min-height: 100vh;
+}
+
+.dash-main{
+  min-width: 0;
+  overflow-x: hidden;
+}
 
   .dash-header{
   display:flex;
@@ -287,17 +298,16 @@
   .a-errlist li{ margin: 2px 0; }
 
   .a-grid{
-    display:grid;
-    grid-template-columns: 1fr 1.2fr;
-    gap: 14px;
-    overflow:auto;
-    padding-right: 2px;
-    height: calc(100vh - 178px);
-  }
-  @media(max-width:1100px){
-    .a-grid{ grid-template-columns: 1fr; height: calc(100vh - 178px); }
-  }
+  display:grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 14px;
+}
 
+@media(max-width:1100px){
+  .a-grid{
+    grid-template-columns: 1fr;
+  }
+}
   .a-card{
     background:#fff;
     border: 1px solid #e6eef2;

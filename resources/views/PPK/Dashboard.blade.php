@@ -468,7 +468,11 @@
     box-shadow:0 10px 20px rgba(2,8,23,.04);
     position:relative;
   }
-
+.u-card--unit .u-info-btn--card {
+  top: auto;
+  bottom: 12px;
+  right: 12px;
+}
   .u-chart-head{
     position:relative;
     display:flex;

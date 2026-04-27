@@ -549,7 +549,7 @@ body.page-arsip.dash-body { font-family: 'Nunito', sans-serif; font-size: 15px; 
 .ap-tbl-head { background: var(--tbl-head-bg); min-height: 52px; position: sticky; top: 0; z-index: 2; }
 .ap-tbl-head .ap-col { color: var(--tbl-head-txt); font-size: 13px; font-weight: 600; letter-spacing: .3px; white-space: nowrap; }
 .ap-tbl-head .ap-col-nilai { display: flex; align-items: center; gap: 4px; }
-
+.ap-tbl-head .ap-col-nilai span { font-weight: 600; }
 .ap-sort-btn {
   width: 28px; height: 28px; border: none; background: transparent;
   display: inline-flex; align-items: center; justify-content: center;
@@ -591,7 +591,7 @@ body.page-arsip.dash-body { font-family: 'Nunito', sans-serif; font-size: 15px; 
   line-height: 1.4;
   box-sizing: border-box;
 }
-.sp-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 100px; padding: 5px 12px; border-radius: 8px; font-size: 13px; font-weight: 400; white-space: nowrap; }
+.sp-badge { display: inline-flex; align-items: center; justify-content:left; min-width: 100px; padding: 5px 12px; border-radius: 8px; font-size: 13px; font-weight: 400; white-space: nowrap; }
 .sp-plan   { background: #fef9c3; color: #854d0e; }
 .sp-select { background: #ede9fe; color: #5b21b6; }
 .sp-do     { background: #fee2e2; color: #b91c1c; }

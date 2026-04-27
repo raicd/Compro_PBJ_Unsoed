@@ -463,6 +463,12 @@
     color: #184f61;
     box-shadow: 0 10px 20px rgba(2,8,23,.06);
   }
+
+  .u-card--unit .u-info-btn--card {
+  top: auto;
+  bottom: 12px;
+  right: 12px;
+}
   .u-info-btn i { font-size: 14px; opacity: .9; pointer-events: none; }
   .u-info-btn:hover { border-color: #143f4d; transform: translateY(-.5px); }
   .u-info-btn--card { position: absolute; right: 12px; top: 12px; }

@@ -364,6 +364,43 @@
     display: flex; align-items: center; gap: 10px;
   }
 
+  html, body{
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.dash-main{
+  height: auto !important;
+  overflow: visible !important;
+}
+
+/* ===== FIX SIDEBAR (SAMAKAN DENGAN KEL0LA AKUN SAYA) ===== */
+
+.dash-sidebar {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.dash-nav {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.dash-side-actions {
+  margin-top: auto;
+}
+
+/* scrollbar */
+.dash-nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dash-nav::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.3);
+  border-radius: 10px;
+}
+
   /* ===== TABLE ===== */
   .table-card { background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,.08); }
   table { width: 100%; border-collapse: collapse; }
