@@ -92,35 +92,30 @@ $metodePengadaanOptions = [
   </div>
 
   <nav class="dash-nav">
-    <!-- Dashboard -->
     <a class="dash-link {{ request()->routeIs('superadmin.dashboard') ? 'active' : '' }}"
        href="{{ route('superadmin.dashboard') }}">
       <span class="ic"><i class="bi bi-grid-fill"></i></span>
       Dashboard
     </a>
 
-    <!-- Arsip -->
     <a class="dash-link {{ request()->routeIs('superadmin.arsip*') ? 'active' : '' }}"
        href="{{ route('superadmin.arsip') }}">
       <span class="ic"><i class="bi bi-archive"></i></span>
       Arsip PBJ
     </a>
 
-    <!-- Tambah Pengadaan -->
     <a class="dash-link {{ request()->routeIs('superadmin.pengadaan.create') ? 'active' : '' }}"
        href="{{ route('superadmin.pengadaan.create') }}">
       <span class="ic"><i class="bi bi-plus-square"></i></span>
       Tambah Pengadaan
     </a>
 
-    <!-- Kelola Menu -->
     <a class="dash-link {{ request()->routeIs('superadmin.kelola.menu') ? 'active' : '' }}"
        href="{{ route('superadmin.kelola.menu') }}">
       <span class="ic"><i class="bi bi-gear-fill"></i></span>
       Kelola Menu
     </a>
 
-    <!-- Kelola Akun -->
     <a class="dash-link {{ request()->routeIs('superadmin.kelola.akun*') ? 'active' : '' }}"
        href="{{ route('superadmin.kelola.akun') }}">
       <span class="ic"><i class="bi bi-person-gear"></i></span>
@@ -209,17 +204,17 @@ $metodePengadaanOptions = [
               </div>
 
               <div class="tp-field">
-  <label class="tp-label">Metode Pengadaan</label>
-  <div class="tp-control">
-    <select name="metode_pengadaan" class="tp-select" required>
-      <option value="" selected disabled hidden>Pilih Metode Pengadaan</option>
-      @foreach($metodePengadaanOptions as $mp)
-        <option value="{{ $mp }}">{{ $mp }}</option>
-      @endforeach
-    </select>
-    <i class="bi bi-chevron-down tp-icon"></i>
-  </div>
-</div>
+                <label class="tp-label">Metode Pengadaan</label>
+                <div class="tp-control">
+                  <select name="metode_pengadaan" class="tp-select" required>
+                    <option value="" selected disabled hidden>Pilih Metode Pengadaan</option>
+                    @foreach($metodePengadaanOptions as $mp)
+                      <option value="{{ $mp }}">{{ $mp }}</option>
+                    @endforeach
+                  </select>
+                  <i class="bi bi-chevron-down tp-icon"></i>
+                </div>
+              </div>
 
               <div class="tp-field">
                 <label class="tp-label">Status Pekerjaan</label>
@@ -343,13 +338,14 @@ $metodePengadaanOptions = [
         </div>
       </section>
 
+      {{-- E. Dokumen Tidak Dipersyaratkan - PPK Style --}}
       <section class="dash-table tp-cardbox" style="border-radius:14px; overflow:visible; margin-bottom:14px;">
         <div style="padding:18px 18px 16px;">
           <div class="tp-section">
             <div class="tp-section-title"><span>E. Dokumen Tidak Dipersyaratkan</span></div>
             <div class="tp-divider"></div>
 
-            <div class="tp-help" style="margin:0 6px 14px;">
+            <div class="tp-help" style="margin:0 0 12px;">
               Centang dokumen yang <b>tidak dipersyaratkan</b>. List ini otomatis mengambil nama dokumen dari kolom D.
             </div>
 
@@ -399,58 +395,27 @@ $metodePengadaanOptions = [
   .dash-body{ font-size: 16px; line-height: 1.6; font-weight: 400; }
   .dash-app{ font-weight: 700 !important; }
 
-  /* ================= HEADER (SAMA DENGAN DASHBOARD) ================= */
-.dash-header {
+  .dash-header {
     width: 100%;
     display: flex;
     flex-direction: column;
     gap: 4px;
-    margin-bottom: 18px; /* ⬅️ penting biar gak nempel ke card */
-}
+    margin-bottom: 18px;
+  }
+  .dash-header-left { display: flex; flex-direction: column; }
+  .dash-header h1 {
+    margin: 0; font-size: 26px; font-weight: var(--fw-semi);
+    color: var(--navy2); line-height: 1.2;
+  }
+  .dash-header p {
+    margin: 4px 0 0; font-size: 15px;
+    color: var(--muted); font-weight: var(--fw-normal);
+  }
+  @media (max-width: 768px) { .dash-header { gap: 6px; } }
 
-/* WRAPPER KIRI */
-.dash-header-left {
-    display: flex;
-    flex-direction: column;
-}
-
-/* JUDUL */
-.dash-header h1 {
-    margin: 0;
-    font-size: 26px;
-    font-weight: var(--fw-semi);
-    color: var(--navy2);
-    line-height: 1.2;
-}
-
-/* DESKRIPSI */
-.dash-header p {
-    margin: 4px 0 0;
-    font-size: 15px;
-    color: var(--muted);
-    font-weight: var(--fw-normal);
-}
-
-/* RESPONSIVE */
-@media (max-width: 768px) {
-    .dash-header {
-        gap: 6px;
-    }
-}
-
-.dash-link {
-  font-weight: 600;
-}
-
-.dash-side-btn {
-  font-weight: 600;
-}
-
-.tp-label {
-  font-weight: 500;
-}
-
-
+  .dash-link { font-weight: 600; }
+  .dash-side-btn { font-weight: 600; }
+  .tp-label { font-weight: 500; }
 
   .dash-side-actions{
     margin-top:auto; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.12);
@@ -502,9 +467,7 @@ $metodePengadaanOptions = [
     width: 18px; height: 18px; border-radius: 999px; border: 2px solid var(--navy2);
     display:inline-block; position:relative; flex: 0 0 auto;
   }
-  .tp-radio-card.active{
-    background: #dff1ff; border-color: #9fd0ff;
-  }
+  .tp-radio-card.active{ background: #dff1ff; border-color: #9fd0ff; }
   .tp-radio-card.active .tp-radio-dot::after{
     content:""; position:absolute; left:50%; top:50%; width: 8px; height: 8px;
     transform: translate(-50%, -50%); border-radius:999px; background: var(--navy2);
@@ -537,8 +500,7 @@ $metodePengadaanOptions = [
   .tp-drop-sub{ font-size:14px; color:#475569; }
   .tp-drop-meta{ font-size:12px; color:#94a3b8; }
   .tp-drop-btn{
-    margin-top: 4px;
-    height: 40px; padding: 0 14px; border-radius: 12px;
+    margin-top: 4px; height: 40px; padding: 0 14px; border-radius: 12px;
     border: 1px solid #e2e8f0; background:#fff; display:inline-flex; align-items:center; justify-content:center;
   }
 
@@ -550,36 +512,87 @@ $metodePengadaanOptions = [
     border:1px solid #e8eef3; background:#fff; border-radius:14px; padding:10px 12px;
   }
 
+  /* ===== E. DOKUMEN TIDAK DIPERSYARATKAN - PPK STYLE ===== */
   .tp-nondoc-wrap{
-    border: 1px solid #e6eef2;
+    border: 1px solid #eef3f6;
     border-radius: 14px;
-    background:#fff;
-    overflow:hidden;
+    background: #fff;
+    box-shadow: 0 10px 18px rgba(2,8,23,.05);
+    overflow: hidden;
   }
   .tp-nondoc-head{
     display:flex; justify-content:space-between; align-items:center; gap:12px;
-    padding:12px 14px; background:#f8fbfd; border-bottom:1px solid #eef3f6;
+    padding:12px 14px; background:#dff1ff; color: var(--navy2);
+    border-bottom:1px solid #eef3f6;
   }
-  .tp-nondoc-title{ display:flex; align-items:center; gap:8px; font-size:15px; color:#0f172a; }
+  .tp-nondoc-title{
+    display:flex; align-items:center; gap:10px;
+    font-size:16px; color: var(--navy2);
+  }
+  .tp-nondoc-title i{ font-size:18px; }
   .tp-nondoc-btn{
-    height:36px; padding:0 12px; border-radius:10px; border:1px solid #e2e8f0; background:#fff; cursor:pointer;
+    height:36px; padding:0 12px; border-radius:10px;
+    border:1px solid rgba(2,8,23,.10); background:#fff; cursor:pointer;
     display:inline-flex; align-items:center; gap:8px;
+    font-family:inherit; font-size:14px; color: var(--navy2);
+    transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease;
   }
-  .tp-nondoc-box{ padding:14px; display:grid; gap:10px; }
+  .tp-nondoc-btn:hover{
+    transform:translateY(-1px);
+    box-shadow:0 12px 18px rgba(2,8,23,.08);
+    border-color:rgba(24,79,97,.35);
+  }
+  .tp-nondoc-box{
+    padding:14px;
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:12px;
+    max-height:380px;
+    overflow:auto;
+  }
+  @media(max-width:900px){ .tp-nondoc-box{ grid-template-columns:1fr; } }
+
   .tp-nondoc-item{
-    display:flex; align-items:center; gap:10px; border:1px solid #e8eef3; border-radius:12px; padding:10px 12px;
+    display:flex; align-items:flex-start; gap:10px;
+    border:1px solid rgba(2,8,23,.08); border-radius:14px; padding:12px 12px;
+    background:#fff; cursor:pointer; user-select:none;
+    transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease;
   }
-  .tp-nondoc-selected{ padding:0 14px 14px; }
-  .tp-nondoc-selected-title{ font-size:14px; color:#0f172a; margin-bottom:10px; }
-  .tp-nondoc-chips{ display:flex; gap:8px; flex-wrap:wrap; }
+  .tp-nondoc-item:hover{
+    transform:translateY(-1px);
+    box-shadow:0 12px 18px rgba(2,8,23,.08);
+    border-color:rgba(24,79,97,.35);
+  }
+  .tp-nondoc-item input{ display:none; }
+  .tp-nondoc-check{
+    width:18px; height:18px; border-radius:6px; border:2px solid var(--navy2);
+    flex:0 0 auto; margin-top:1px; position:relative;
+  }
+  .tp-nondoc-text{ font-size:15px; color:#0f172a; line-height:1.35; }
+  .tp-nondoc-item.is-checked{
+    background:rgba(24,79,97,.08);
+    border-color:rgba(24,79,97,.35);
+  }
+  .tp-nondoc-item.is-checked .tp-nondoc-check::after{
+    content:""; position:absolute; left:50%; top:50%;
+    width:9px; height:9px; transform:translate(-50%,-50%);
+    border-radius:3px; background: var(--navy2);
+  }
+  .tp-nondoc-selected{
+    border-top:1px solid rgba(2,8,23,.06);
+    padding:12px 14px 14px; background:#fff;
+  }
+  .tp-nondoc-selected-title{ color: var(--navy2); font-size:14px; margin-bottom:10px; }
+  .tp-nondoc-chips{ display:flex; flex-wrap:wrap; gap:8px; }
   .tp-chip{
     display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:999px;
-    border:1px solid #d7e9ee; background:#e9f3f6; font-size:13px; color:#184f61;
+    border:1px solid rgba(24,79,97,.22); background:#fff; color: var(--navy2); font-size:13px;
   }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+  // Radio cards
   document.querySelectorAll('.tp-radio-card').forEach(card => {
     const input = card.querySelector('input[type="radio"]');
     if (!input) return;
@@ -591,65 +604,83 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
+  // Accordion
   document.querySelectorAll('.tp-acc-item').forEach(item => {
     const head = item.querySelector('.tp-acc-head');
     const body = item.querySelector('.tp-acc-body');
     if (!head || !body) return;
-
     head.addEventListener('click', function () {
       const isHidden = body.style.display === 'none';
       body.style.display = isHidden ? '' : 'none';
     });
   });
 
+  // File preview
   document.querySelectorAll('.tp-file-hidden').forEach(input => {
     input.addEventListener('change', function () {
       const wrap = input.closest('.tp-dropzone')?.querySelector('.tp-preview-wrap');
       const list = input.closest('.tp-dropzone')?.querySelector('.tp-preview-list');
       if (!wrap || !list) return;
-
       list.innerHTML = '';
-
       Array.from(input.files || []).forEach(file => {
         const row = document.createElement('div');
         row.className = 'tp-preview-item';
         row.innerHTML = `<div>${file.name}</div>`;
         list.appendChild(row);
       });
-
       wrap.hidden = (input.files || []).length === 0;
     });
   });
 
-  const listBox = document.getElementById('tp-nondoc-list');
-  const chipsWrap = document.getElementById('tp-nondoc-chips');
-  const selectedWrap = document.getElementById('tp-nondoc-selected');
-  const jsonInput = document.getElementById('tp-nondoc-json');
-  const clearBtn = document.getElementById('tp-nondoc-clear');
+  /* ===== E. DOKUMEN TIDAK DIPERSYARATKAN ===== */
+  const listBox     = document.getElementById('tp-nondoc-list');
+  const chipsWrap   = document.getElementById('tp-nondoc-chips');
+  const selectedWrap= document.getElementById('tp-nondoc-selected');
+  const jsonInput   = document.getElementById('tp-nondoc-json');
+  const clearBtn    = document.getElementById('tp-nondoc-clear');
 
-  const docNames = Array.from(document.querySelectorAll('.tp-acc-head .tp-acc-left')).map(el => el.textContent.trim());
+  const cleanText = (s) => (s || '').replace(/\s+/g,' ').trim();
+
+  const docNames = Array.from(document.querySelectorAll('.tp-acc-head .tp-acc-left')).map(el => {
+    return cleanText(el.textContent);
+  }).filter(Boolean);
+
   const selected = new Set();
 
-  function renderNonDoc(){
+  function renderNonDoc() {
     if (!listBox || !chipsWrap || !jsonInput || !selectedWrap) return;
 
     listBox.innerHTML = '';
     chipsWrap.innerHTML = '';
 
     docNames.forEach(name => {
-      const row = document.createElement('label');
-      row.className = 'tp-nondoc-item';
-      row.innerHTML = `
-        <input type="checkbox" value="${name}" ${selected.has(name) ? 'checked' : ''}>
-        <span>${name}</span>
-      `;
-      const cb = row.querySelector('input');
-      cb.addEventListener('change', function () {
-        if (cb.checked) selected.add(name);
-        else selected.delete(name);
+      const label = document.createElement('label');
+      label.className = 'tp-nondoc-item' + (selected.has(name) ? ' is-checked' : '');
+
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.value = name;
+      input.checked = selected.has(name);
+
+      const box = document.createElement('span');
+      box.className = 'tp-nondoc-check';
+
+      const txt = document.createElement('span');
+      txt.className = 'tp-nondoc-text';
+      txt.textContent = name;
+
+      label.appendChild(input);
+      label.appendChild(box);
+      label.appendChild(txt);
+
+      label.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        if (selected.has(name)) selected.delete(name);
+        else selected.add(name);
         renderNonDoc();
       });
-      listBox.appendChild(row);
+
+      listBox.appendChild(label);
     });
 
     const arr = Array.from(selected);
@@ -664,7 +695,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  clearBtn?.addEventListener('click', function(){
+  clearBtn?.addEventListener('click', function () {
     selected.clear();
     renderNonDoc();
   });
